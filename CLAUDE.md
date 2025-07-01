@@ -158,6 +158,54 @@ swift test --package-path SharedModels/
 - **マージコミット**: マージ時のコミットメッセージにIssue番号を含める
 - **ステータス更新**: Issue作業開始時にAssigneeを設定し、進捗を可視化
 
+## テスト駆動開発(TDD)
+
+本プロジェクトでは**テスト駆動開発(Test-Driven Development)**を採用し、高品質で保守性の高いコードを実現します。
+
+### TDDサイクル
+1. **Red**: まず失敗するテストを書く
+2. **Green**: テストをパスする最小限のコードを実装
+3. **Refactor**: テストを維持しながらコードを改善
+
+### テスト戦略
+- **Unit Tests**: 個別のクラス・メソッドの動作確認
+- **Integration Tests**: コンポーネント間の連携確認
+- **End-to-End Tests**: アプリ全体の動作確認（UI含む）
+
+### テスト実装ルール
+- **テストファースト**: 実装前に必ずテストを作成
+- **テストカバレッジ**: 最低80%以上を目標
+- **命名規則**: `test_when条件_then期待結果` 形式
+- **Arrange-Act-Assert**: テスト構造の統一
+
+### テストファイル構成
+```
+ReuseBackupServer/
+├── ReuseBackupServerTests/
+│   ├── HTTPServerTests.swift
+│   ├── MessageHandlerTests.swift
+│   └── NetworkManagerTests.swift
+└── ReuseBackupServerUITests/
+    └── ServerUITests.swift
+
+ReuseBackupClient/
+├── ReuseBackupClientTests/
+│   ├── MessageSenderTests.swift
+│   ├── NetworkManagerTests.swift
+│   └── ValidationTests.swift
+└── ReuseBackupClientUITests/
+    └── ClientUITests.swift
+```
+
+### テスト実行コマンド
+```bash
+# 単体テスト実行
+xcodebuild test -project ReuseBackupServer/ReuseBackupServer.xcodeproj -scheme ReuseBackupServer -destination 'platform=iOS Simulator,name=iPhone 15'
+
+# テストカバレッジ確認
+xcodebuild test -project ReuseBackupServer/ReuseBackupServer.xcodeproj -scheme ReuseBackupServer -enableCodeCoverage YES
+```
+
 ## タスク完了時の運用
 
 ### Git運用ルール

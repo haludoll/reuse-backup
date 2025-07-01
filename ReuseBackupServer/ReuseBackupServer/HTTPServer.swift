@@ -1,15 +1,17 @@
 import FlyingFox
 import Foundation
 import OSLog
+import Observation
 
 /// ReuseBackupServer用のHTTPサーバー実装
 @MainActor
-class HTTPServer: ObservableObject {
+@Observable
+class HTTPServer {
     
     // MARK: - Properties
     
-    @Published var isRunning = false
-    @Published var serverStatus: ServerStatus = .stopped
+    var isRunning = false
+    var serverStatus: ServerStatus = .stopped
     
     private var server: FlyingFox.HTTPServer?
     private let port: UInt16 = 8080

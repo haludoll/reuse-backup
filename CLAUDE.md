@@ -178,33 +178,6 @@ swift test --package-path SharedModels/
 - **命名規則**: `test_when条件_then期待結果` 形式
 - **Arrange-Act-Assert**: テスト構造の統一
 
-### テストファイル構成
-```
-ReuseBackupServer/
-├── ReuseBackupServerTests/
-│   ├── HTTPServerTests.swift
-│   ├── MessageHandlerTests.swift
-│   └── NetworkManagerTests.swift
-└── ReuseBackupServerUITests/
-    └── ServerUITests.swift
-
-ReuseBackupClient/
-├── ReuseBackupClientTests/
-│   ├── MessageSenderTests.swift
-│   ├── NetworkManagerTests.swift
-│   └── ValidationTests.swift
-└── ReuseBackupClientUITests/
-    └── ClientUITests.swift
-```
-
-### テスト実行コマンド
-```bash
-# 単体テスト実行
-xcodebuild test -project ReuseBackupServer/ReuseBackupServer.xcodeproj -scheme ReuseBackupServer -destination 'platform=iOS Simulator,name=iPhone 15'
-
-# テストカバレッジ確認
-xcodebuild test -project ReuseBackupServer/ReuseBackupServer.xcodeproj -scheme ReuseBackupServer -enableCodeCoverage YES
-```
 
 ## タスク完了時の運用
 

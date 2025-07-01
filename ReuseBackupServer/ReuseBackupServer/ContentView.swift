@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State private var httpServer = HTTPServer()
+    @StateObject private var httpServer = HTTPServer()
     
     var body: some View {
         VStack(spacing: 20) {

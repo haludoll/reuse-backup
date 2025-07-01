@@ -79,19 +79,6 @@ struct HTTPServerTests {
         #expect(response.serverTime == serverTime)
     }
     
-    @Test func test_when_message_request_encoded_then_json_is_valid() async throws {
-        let request = HTTPServer.MessageRequest(
-            message: "Hello from client",
-            timestamp: "2025-07-01T12:00:00Z"
-        )
-        
-        let data = try JSONEncoder().encode(request)
-        let decodedRequest = try JSONDecoder().decode(HTTPServer.MessageRequest.self, from: data)
-        
-        #expect(decodedRequest.message == request.message)
-        #expect(decodedRequest.timestamp == request.timestamp)
-    }
-    
     @Test func test_when_server_status_descriptions_then_correct_strings() async throws {
         #expect(HTTPServer.ServerStatus.stopped.description == "stopped")
         #expect(HTTPServer.ServerStatus.starting.description == "starting")

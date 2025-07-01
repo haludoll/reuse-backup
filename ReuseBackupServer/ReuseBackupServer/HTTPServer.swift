@@ -1,19 +1,17 @@
-import FlyingFox
 import Foundation
+import Network
 import OSLog
-import Observation
 
 /// ReuseBackupServer用のHTTPサーバー実装
 @MainActor
-@Observable
-class HTTPServer {
+class HTTPServer: ObservableObject {
     
     // MARK: - Properties
     
-    var isRunning = false
-    var serverStatus: ServerStatus = .stopped
+    @Published var isRunning = false
+    @Published var serverStatus: ServerStatus = .stopped
     
-    private var server: FlyingFox.HTTPServer?
+    private var listener: NWListener?
     private let port: UInt16 = 8080
     private let logger = Logger(subsystem: "com.haludoll.ReuseBackupServer", category: "HTTPServer")
     private var startTime: Date?
@@ -82,22 +80,41 @@ class HTTPServer {
         logger.info("Starting HTTP server on port \(self.port)")
         
         do {
-            let server = FlyingFox.HTTPServer(port: port)
+            let parameters = NWParameters.tcp
+            let listener = try NWListener(using: parameters, on: NWEndpoint.Port(rawValue: port)!)
             
-            // APIエンドポイントの登録
-            await server.appendRoute("POST /api/message", to: handleMessage)
-            await server.appendRoute("GET /api/status", to: handleStatus)
+            listener.stateUpdateHandler = { [weak self] state in
+                DispatchQueue.main.async {
+                    switch state {
+                    case .ready:
+                        self?.startTime = Date()
+                        self?.isRunning = true
+                        self?.serverStatus = .running
+                        self?.logger.info("HTTP server started successfully on port \(self?.port ?? 0)")
+                    case .failed(let error):
+                        let errorMessage = "Server failed: \(error.localizedDescription)"
+                        self?.logger.error("\(errorMessage)")
+                        self?.serverStatus = .error(errorMessage)
+                        self?.isRunning = false
+                    case .cancelled:
+                        self?.isRunning = false
+                        self?.serverStatus = .stopped
+                        self?.startTime = nil
+                        self?.logger.info("HTTP server stopped")
+                    default:
+                        break
+                    }
+                }
+            }
             
-            self.server = server
+            listener.newConnectionHandler = { [weak self] connection in
+                Task {
+                    await self?.handleConnection(connection)
+                }
+            }
             
-            // サーバー開始
-            try await server.start()
-            
-            startTime = Date()
-            isRunning = true
-            serverStatus = .running
-            
-            logger.info("HTTP server started successfully on port \(self.port)")
+            listener.start(queue: .global(qos: .userInitiated))
+            self.listener = listener
             
         } catch {
             let errorMessage = "Failed to start server: \(error.localizedDescription)"
@@ -108,7 +125,7 @@ class HTTPServer {
     }
     
     func stopServer() async {
-        guard isRunning, let server = server else {
+        guard isRunning, let listener = listener else {
             logger.warning("Server is not running")
             return
         }
@@ -116,75 +133,26 @@ class HTTPServer {
         serverStatus = .stopping
         logger.info("Stopping HTTP server")
         
-        server.stop()
-        
-        self.server = nil
-        isRunning = false
-        serverStatus = .stopped
-        startTime = nil
-        
-        logger.info("HTTP server stopped")
+        listener.cancel()
+        self.listener = nil
     }
     
-    // MARK: - API Handlers
+    // MARK: - Connection Handling
     
-    private func handleMessage(_ request: FlyingFox.HTTPRequest) async throws -> FlyingFox.HTTPResponse {
-        logger.info("Received POST request to /api/message")
+    private func handleConnection(_ connection: NWConnection) {
+        connection.start(queue: .global(qos: .userInitiated))
         
-        // リクエストボディの解析
-        guard let bodyData = request.body,
-              let messageRequest = try? JSONDecoder().decode(MessageRequest.self, from: bodyData) else {
-            logger.warning("Invalid JSON in message request")
-            
-            let errorResponse = ErrorResponse(
-                status: "error",
-                error: "Invalid JSON format",
-                received: false
-            )
-            
-            let responseData = try JSONEncoder().encode(errorResponse)
-            return HTTPResponse(
-                statusCode: .badRequest,
-                headers: ["Content-Type": "application/json"],
-                body: responseData
-            )
-        }
+        // 基本的なHTTPレスポンスを送信
+        let response = """
+        HTTP/1.1 200 OK\r
+        Content-Type: application/json\r
+        Content-Length: 84\r
+        \r
+        {"status":"success","message":"ReuseBackup Server is running","port":\(port)}
+        """.data(using: .utf8)!
         
-        // メッセージをログに出力
-        logger.info("Message received: '\(messageRequest.message)' at \(messageRequest.timestamp)")
-        
-        // 成功レスポンス
-        let response = MessageResponse(
-            status: "success",
-            received: true,
-            serverTimestamp: ISO8601DateFormatter().string(from: Date())
-        )
-        
-        let responseData = try JSONEncoder().encode(response)
-        return HTTPResponse(
-            statusCode: .ok,
-            headers: ["Content-Type": "application/json"],
-            body: responseData
-        )
-    }
-    
-    private func handleStatus(_ request: FlyingFox.HTTPRequest) async throws -> FlyingFox.HTTPResponse {
-        logger.info("Received GET request to /api/status")
-        
-        let uptime = startTime.map { Int(Date().timeIntervalSince($0)) } ?? 0
-        
-        let statusResponse = ServerStatusResponse(
-            status: serverStatus.description,
-            uptime: uptime,
-            version: "1.0.0",
-            serverTime: ISO8601DateFormatter().string(from: Date())
-        )
-        
-        let responseData = try JSONEncoder().encode(statusResponse)
-        return HTTPResponse(
-            statusCode: .ok,
-            headers: ["Content-Type": "application/json"],
-            body: responseData
-        )
+        connection.send(content: response, completion: .contentProcessed { _ in
+            connection.cancel()
+        })
     }
 }

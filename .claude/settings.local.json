@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(claude mcp get:*)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "mcp__github__add_issue_comment",
+      "mcp__github__update_issue",
+      "Bash(afplay:*)",
+      "Bash(terminal-notifier:*)",
+      "Bash(terminal-notifier:*)",
+      "Bash(rm:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ],
+    "deny": []
+  }
+}

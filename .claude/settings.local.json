@@ -19,7 +19,15 @@
       "Bash(git pull:*)",
       "mcp__github__create_pull_request",
       "mcp__github__get_me",
-      "Bash(git fetch:*)"
+      "Bash(git fetch:*)",
+      "Bash(git push:*)",
+      "Bash(xcodebuild:*)",
+      "Bash(mkdir:*)",
+      "Bash(mv:*)",
+      "Bash(swift-format format:*)",
+      "Bash(find:*)",
+      "Bash(swiftformat:*)",
+      "Bash(gh pr create:*)"
     ],
     "deny": []
   }

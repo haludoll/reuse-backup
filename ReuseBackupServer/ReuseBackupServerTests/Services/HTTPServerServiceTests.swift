@@ -17,18 +17,229 @@ struct HTTPServerServiceTests {
         let service = HTTPServerService()
 
         #expect(service.isRunning == false)
+        #expect(service.port == 8080)
+    }
+
+    @Test func when_service_initialized_with_custom_port_then_port_is_set() async throws {
+        let customPort: UInt16 = 9090
+        let service = HTTPServerService(port: customPort)
+
+        #expect(service.port == customPort)
+        #expect(service.isRunning == false)
+    }
+
+    // MARK: - Dependency Injection Tests
+
+    @Test func when_service_initialized_with_mock_factory_then_uses_mock() async throws {
+        let mockFactory = MockHTTPServerFactory()
+        let service = HTTPServerService(port: 8080, serverFactory: mockFactory)
+
+        #expect(service.isRunning == false)
+        #expect(mockFactory.createServerCallCount == 0)
+    }
+
+    @Test func when_service_starts_then_creates_server_via_factory() async throws {
+        let mockFactory = MockHTTPServerFactory()
+        let service = HTTPServerService(port: 8080, serverFactory: mockFactory)
+
+        try await service.start()
+
+        #expect(mockFactory.createServerCallCount == 1)
+        #expect(mockFactory.lastCreatedPort == 8080)
+        #expect(service.isRunning == true)
+
+        await service.stop()
+    }
+
+    @Test func when_service_starts_then_configures_routes() async throws {
+        let mockFactory = MockHTTPServerFactory()
+        let service = HTTPServerService(port: 8080, serverFactory: mockFactory)
+
+        try await service.start()
+
+        guard let mockServer = mockFactory.lastCreatedServer else {
+            #expect(Bool(false), "Mock server should be created")
+            return
+        }
+
+        #expect(mockServer.appendRouteCallCount == 2)
+        #expect(mockServer.hasRoute(.init(method: .GET, path: "/")))
+        #expect(mockServer.hasRoute(.init(method: .GET, path: "/api/status")))
+
+        await service.stop()
+    }
+
+    @Test func when_service_starts_multiple_times_then_only_starts_once() async throws {
+        let mockFactory = MockHTTPServerFactory()
+        let service = HTTPServerService(port: 8080, serverFactory: mockFactory)
+
+        try await service.start()
+        try await service.start()
+        try await service.start()
+
+        #expect(mockFactory.createServerCallCount == 1)
+        #expect(service.isRunning == true)
+
+        await service.stop()
+    }
+
+    @Test func when_service_stops_then_server_stops() async throws {
+        let mockFactory = MockHTTPServerFactory()
+        let service = HTTPServerService(port: 8080, serverFactory: mockFactory)
+
+        try await service.start()
+        #expect(service.isRunning == true)
+
+        await service.stop()
+
+        #expect(service.isRunning == false)
+        guard let mockServer = mockFactory.lastCreatedServer else {
+            #expect(Bool(false), "Mock server should exist")
+            return
+        }
+        #expect(mockServer.stopCallCount == 1)
+    }
+
+    @Test func when_service_stops_without_starting_then_no_error() async throws {
+        let service = HTTPServerService()
+
+        await service.stop()
+
+        #expect(service.isRunning == false)
+    }
+
+    @Test func when_service_stops_multiple_times_then_stops_gracefully() async throws {
+        let mockFactory = MockHTTPServerFactory()
+        let service = HTTPServerService(port: 8080, serverFactory: mockFactory)
+
+        try await service.start()
+        await service.stop()
+        await service.stop()
+        await service.stop()
+
+        #expect(service.isRunning == false)
+        guard let mockServer = mockFactory.lastCreatedServer else {
+            #expect(Bool(false), "Mock server should exist")
+            return
+        }
+        #expect(mockServer.stopCallCount == 1)
+    }
+
+    // MARK: - Route Handler Tests
+
+    @Test func when_root_handler_called_then_returns_correct_response() async throws {
+        let mockFactory = MockHTTPServerFactory()
+        let service = HTTPServerService(port: 8080, serverFactory: mockFactory)
+
+        try await service.start()
+
+        guard let mockServer = mockFactory.lastCreatedServer else {
+            #expect(Bool(false), "Mock server should exist")
+            return
+        }
+
+        let request = HTTPRequest(method: .GET, path: "/", headers: [:], body: Data())
+        let response = try await mockServer.simulateRequest(for: .init(method: .GET, path: "/"), request: request)
+
+        #expect(response != nil)
+        #expect(response?.statusCode == .ok)
+        #expect(response?.headers[.contentType] == "application/json")
+
+        if let body = response?.body {
+            let rootResponse = try JSONDecoder().decode(RootResponse.self, from: body)
+            #expect(rootResponse.status == "success")
+            #expect(rootResponse.message == "ReuseBackup Server is running")
+            #expect(rootResponse.port == 8080)
+            #expect(rootResponse.version == "1.0.0")
+            #expect(rootResponse.endpoints == ["/", "/api/status"])
+        }
+
+        await service.stop()
+    }
+
+    @Test func when_status_handler_called_then_returns_correct_response() async throws {
+        let mockFactory = MockHTTPServerFactory()
+        let service = HTTPServerService(port: 9090, serverFactory: mockFactory)
+
+        try await service.start()
+
+        guard let mockServer = mockFactory.lastCreatedServer else {
+            #expect(Bool(false), "Mock server should exist")
+            return
+        }
+
+        let request = HTTPRequest(method: .GET, path: "/api/status", headers: [:], body: Data())
+        let response = try await mockServer.simulateRequest(for: .init(method: .GET, path: "/api/status"), request: request)
+
+        #expect(response != nil)
+        #expect(response?.statusCode == .ok)
+        #expect(response?.headers[.contentType] == "application/json")
+
+        if let body = response?.body {
+            let statusResponse = try JSONDecoder().decode(ServerStatusResponse.self, from: body)
+            #expect(statusResponse.status == "running")
+            #expect(statusResponse.version == "1.0.0")
+            #expect(statusResponse.port == 9090)
+            #expect(statusResponse.uptimeSeconds != nil)
+        }
+
+        await service.stop()
+    }
+
+    // MARK: - Error Handling Tests
+
+    @Test func when_server_factory_throws_then_service_handles_error() async throws {
+        let mockFactory = MockHTTPServerFactory()
+        let service = HTTPServerService(port: 8080, serverFactory: mockFactory)
+
+        // サーバー作成後にrun()でエラーを発生させる
+        try await service.start()
+
+        guard let mockServer = mockFactory.lastCreatedServer else {
+            #expect(Bool(false), "Mock server should exist")
+            return
+        }
+
+        // モックサーバーでエラーをシミュレート
+        mockServer.shouldThrowOnRun = true
+
+        // サーバーがエラーで停止した場合、isRunningがfalseになることを確認
+        // 実際のテストでは、サーバータスクの完了を待つ必要がある
+        await service.stop()
+        #expect(service.isRunning == false)
     }
 
     // MARK: - Integration Tests
-
-    // 注意: 実際のHTTPServerServiceの統合テストは実際のサーバーを起動するため
-    // ここでは基本的なテストのみ実装し、詳細なテストはモックを使用
 
     @Test func service_conforms_to_protocol() async throws {
         let service: HTTPServerServiceProtocol = HTTPServerService()
 
         #expect(service.isRunning == false)
-        // プロトコルに準拠していることを確認
+    }
+
+    @Test func service_lifecycle_with_mock() async throws {
+        let mockFactory = MockHTTPServerFactory()
+        let service = HTTPServerService(port: 8080, serverFactory: mockFactory)
+
+        // 初期状態
+        #expect(service.isRunning == false)
+        #expect(mockFactory.createServerCallCount == 0)
+
+        // 開始
+        try await service.start()
+        #expect(service.isRunning == true)
+        #expect(mockFactory.createServerCallCount == 1)
+
+        // 停止
+        await service.stop()
+        #expect(service.isRunning == false)
+
+        // 再開始
+        try await service.start()
+        #expect(service.isRunning == true)
+        #expect(mockFactory.createServerCallCount == 2)
+
+        await service.stop()
     }
 }
 

@@ -4,21 +4,27 @@ import OSLog
 
 /// HTTP サーバー機能を提供するサービスクラス
 ///
-/// FlyingFoxフレームワークを使用してHTTPサーバー機能を提供します。
+/// HTTPサーバーファクトリーを使用してHTTPサーバー機能を提供します。
 /// 主な機能：
 /// - `/` - サーバー基本情報
 /// - `/api/status` - サーバーステータス情報の取得
 final class HTTPServerService: HTTPServerServiceProtocol {
     // MARK: - Properties
 
-    /// FlyingFoxのHTTPサーバーインスタンス
-    private var server: FlyingFox.HTTPServer?
+    /// HTTPサーバーインスタンス
+    private var server: HTTPServerProtocol?
 
     /// サーバー実行中のタスク
     private var serverTask: Task<Void, Never>?
 
     /// サーバーが使用するポート番号
     let port: UInt16
+
+    /// HTTPサーバーファクトリー
+    private let serverFactory: HTTPServerFactory
+
+    /// サーバー開始時刻
+    private var startTime: Date?
 
     /// ログ出力用のLogger
     private let logger = Logger(subsystem: "com.haludoll.ReuseBackupServer", category: "HTTPServerService")
@@ -27,10 +33,13 @@ final class HTTPServerService: HTTPServerServiceProtocol {
 
     /// HTTPServerServiceを初期化
     ///
-    /// 指定されたポート（デフォルト: 8080）でサーバーを初期化します。
-    /// - Parameter port: サーバーが使用するポート番号
-    init(port: UInt16 = 8080) {
+    /// 指定されたポートとファクトリーでサーバーを初期化します。
+    /// - Parameters:
+    ///   - port: サーバーが使用するポート番号
+    ///   - serverFactory: HTTPサーバーを作成するファクトリー
+    init(port: UInt16 = 8080, serverFactory: HTTPServerFactory = FlyingFoxHTTPServerFactory()) {
         self.port = port
+        self.serverFactory = serverFactory
         logger.info("HTTPServerService initialized for port \(port)")
     }
 
@@ -38,7 +47,7 @@ final class HTTPServerService: HTTPServerServiceProtocol {
 
     /// HTTPサーバーを開始
     ///
-    /// FlyingFoxを使用してHTTPサーバーを開始し、ルートとAPIエンドポイントを設定します。
+    /// サーバーファクトリーを使用してHTTPサーバーを開始し、ルートとAPIエンドポイントを設定します。
     /// サーバーは別タスクで非同期実行され、即座に制御が戻ります。
     /// - Throws: サーバー開始に失敗した場合のエラー
     func start() async throws {
@@ -47,31 +56,33 @@ final class HTTPServerService: HTTPServerServiceProtocol {
             return
         }
 
-        logger.info("Starting HTTP server on port \(self.port)")
+        logger.info("Starting HTTP server on port \(port)")
 
-        let server = HTTPServer(port: port)
+        let server = serverFactory.createServer(port: port)
 
         await server.appendRoute(.init(method: .GET, path: "/"), to: ClosureHTTPHandler(rootHandler))
         await server.appendRoute(.init(method: .GET, path: "/api/status"), to: ClosureHTTPHandler(statusHandler))
 
         // server.run()は永続的にawaitするため、先にインスタンスを保存
         self.server = server
+        startTime = Date()
         serverTask = Task {
             do {
                 try await server.run()
             } catch {
                 self.server = nil
                 self.serverTask = nil
+                self.startTime = nil
                 logger.error("HTTP server stopped with error: \(error.localizedDescription)")
             }
         }
 
-        logger.info("HTTP server started successfully on port \(self.port)")
+        logger.info("HTTP server started successfully on port \(port)")
     }
 
     /// HTTPサーバーを停止
     ///
-    /// 実行中のFlyingFoxサーバーを停止し、関連するタスクもキャンセルします。
+    /// 実行中のHTTPサーバーを停止し、関連するタスクもキャンセルします。
     func stop() async {
         guard let server = server else {
             logger.warning("Server is not running")
@@ -85,6 +96,7 @@ final class HTTPServerService: HTTPServerServiceProtocol {
 
         self.server = nil
         serverTask = nil
+        startTime = nil
 
         logger.info("HTTP server stopped")
     }
@@ -101,13 +113,16 @@ final class HTTPServerService: HTTPServerServiceProtocol {
     /// - Returns: サーバー情報を含むHTTPレスポンス
     @Sendable
     private func rootHandler(request _: HTTPRequest) async throws -> HTTPResponse {
-        let response = [
-            "status": "success",
-            "message": "ReuseBackup Server is running",
-            "port": port,
-        ] as [String: Any]
+        let response = RootResponse(
+            status: "success",
+            message: "ReuseBackup Server is running",
+            version: "1.0.0",
+            port: port,
+            serverTime: ISO8601DateFormatter().string(from: Date()),
+            endpoints: ["/", "/api/status"]
+        )
 
-        let jsonData = try JSONSerialization.data(withJSONObject: response)
+        let jsonData = try JSONEncoder().encode(response)
         return HTTPResponse(statusCode: .ok,
                             headers: [.contentType: "application/json"],
                             body: jsonData)
@@ -120,10 +135,13 @@ final class HTTPServerService: HTTPServerServiceProtocol {
     /// - Returns: ステータス情報を含むHTTPレスポンス
     @Sendable
     private func statusHandler(request _: HTTPRequest) async throws -> HTTPResponse {
+        let uptime = startTime.map { Date().timeIntervalSince($0) }
         let statusResponse = ServerStatusResponse(
             status: "running",
             version: "1.0.0",
-            serverTime: ISO8601DateFormatter().string(from: Date())
+            serverTime: ISO8601DateFormatter().string(from: Date()),
+            port: port,
+            uptimeSeconds: uptime
         )
 
         let jsonData = try JSONEncoder().encode(statusResponse)

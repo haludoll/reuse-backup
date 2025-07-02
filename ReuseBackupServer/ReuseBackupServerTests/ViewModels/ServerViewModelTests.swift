@@ -130,7 +130,6 @@ struct ServerViewModelTests {
         #expect(serverStatus == .running)
     }
 
-
     // MARK: - Edge Cases Tests
 
     @Test func multiple_start_stop_operations() async throws {

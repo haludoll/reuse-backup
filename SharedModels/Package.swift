@@ -4,7 +4,8 @@ import PackageDescription
 let package = Package(
     name: "SharedModels",
     platforms: [
-        .iOS(.v15)
+        .iOS(.v15),
+        .macOS(.v12)
     ],
     products: [
         .library(
@@ -13,8 +14,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-openapi-generator", from: "1.0.0"),
-        .package(url: "https://github.com/apple/swift-openapi-runtime", from: "1.0.0"),
-        .package(url: "https://github.com/apple/swift-openapi-urlsession", from: "1.0.0")
+        .package(url: "https://github.com/apple/swift-openapi-runtime", from: "1.0.0")
     ],
     targets: [
         .target(

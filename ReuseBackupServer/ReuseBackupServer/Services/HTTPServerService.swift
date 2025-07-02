@@ -60,13 +60,18 @@ final class HTTPServerService: HTTPServerServiceProtocol {
         logger.info("Starting HTTP server on port \(port)")
 
         let server = serverFactory.createServer(port: port)
+        let currentStartTime = Date()
 
-        await server.appendRoute(.init(method: .GET, path: "/"), to: ClosureHTTPHandler(rootHandler))
-        await server.appendRoute(.init(method: .GET, path: "/api/status"), to: ClosureHTTPHandler(statusHandler))
+        // ハンドラーを作成
+        let rootHandler = RootHandler(port: port)
+        let statusHandler = StatusHandler(port: port, startTime: currentStartTime)
+
+        await server.appendRoute(.init(method: .GET, path: "/"), to: rootHandler)
+        await server.appendRoute(.init(method: .GET, path: "/api/status"), to: statusHandler)
 
         // server.run()は永続的にawaitするため、先にインスタンスを保存
         self.server = server
-        startTime = Date()
+        startTime = currentStartTime
         serverTask = Task {
             do {
                 try await server.run()
@@ -104,50 +109,4 @@ final class HTTPServerService: HTTPServerServiceProtocol {
 
     /// サーバーが実行中かどうかを返す
     var isRunning: Bool { server != nil }
-
-    // MARK: - Route Handlers
-
-    /// ルートエンドポイントのハンドラー
-    ///
-    /// サーバーの基本情報を返します。
-    /// - Parameter request: HTTPリクエスト
-    /// - Returns: サーバー情報を含むHTTPレスポンス
-    @Sendable
-    private func rootHandler(request _: HTTPRequest) async throws -> HTTPResponse {
-        let response = RootResponse(
-            status: "success",
-            message: "ReuseBackup Server is running",
-            version: "1.0.0",
-            port: port,
-            serverTime: ISO8601DateFormatter().string(from: Date()),
-            endpoints: ["/", "/api/status"]
-        )
-
-        let jsonData = try JSONEncoder().encode(response)
-        return HTTPResponse(statusCode: .ok,
-                            headers: [.contentType: "application/json"],
-                            body: jsonData)
-    }
-
-    /// APIステータスエンドポイントのハンドラー
-    ///
-    /// サーバーの詳細なステータス情報を返します。
-    /// - Parameter request: HTTPリクエスト
-    /// - Returns: ステータス情報を含むHTTPレスポンス
-    @Sendable
-    private func statusHandler(request _: HTTPRequest) async throws -> HTTPResponse {
-        let uptime = startTime.map { Date().timeIntervalSince($0) }
-        let statusResponse = ServerStatusResponse(
-            status: "running",
-            version: "1.0.0",
-            serverTime: ISO8601DateFormatter().string(from: Date()),
-            port: port,
-            uptimeSeconds: uptime
-        )
-
-        let jsonData = try JSONEncoder().encode(statusResponse)
-        return HTTPResponse(statusCode: .ok,
-                            headers: [.contentType: "application/json"],
-                            body: jsonData)
-    }
 }

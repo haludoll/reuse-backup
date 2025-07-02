@@ -39,8 +39,8 @@ ReuseBackupClient/          # 新しいiPhone用クライアントアプリ
 │   └── PhotoLibrary/     # Photosフレームワーク統合
 └── Tests/
 
-SharedModels/              # 共有Swiftパッケージ
-├── Sources/SharedModels/
+APISharedModels/          # 共有APIモデルSwiftパッケージ
+├── Sources/APISharedModels/
 │   ├── FileMetadata.swift
 │   ├── TransferStatus.swift
 │   └── NetworkModels.swift
@@ -62,9 +62,9 @@ xcodebuild -project ReuseBackupClient/ReuseBackupClient.xcodeproj -scheme ReuseB
 xcodebuild test -project ReuseBackupServer/ReuseBackupServer.xcodeproj -scheme ReuseBackupServer
 xcodebuild test -project ReuseBackupClient/ReuseBackupClient.xcodeproj -scheme ReuseBackupClient
 
-# 共有モデル用Swiftパッケージ
-swift build -c debug --package-path SharedModels/
-swift test --package-path SharedModels/
+# 共有APIモデル用Swiftパッケージ
+swift build -c debug --package-path APISharedModels/
+swift test --package-path APISharedModels/
 ```
 
 ## コアアーキテクチャ

@@ -1,4 +1,4 @@
-// SharedModels
+// APISharedModels
 // OpenAPI Generated Models
 
 import OpenAPIRuntime

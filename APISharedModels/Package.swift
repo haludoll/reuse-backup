@@ -2,15 +2,15 @@
 import PackageDescription
 
 let package = Package(
-    name: "SharedModels",
+    name: "APISharedModels",
     platforms: [
         .iOS(.v15),
         .macOS(.v12)
     ],
     products: [
         .library(
-            name: "SharedModels",
-            targets: ["SharedModels"])
+            name: "APISharedModels",
+            targets: ["APISharedModels"])
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-openapi-generator", from: "1.0.0"),
@@ -18,7 +18,7 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "SharedModels",
+            name: "APISharedModels",
             dependencies: [
                 .product(name: "OpenAPIRuntime", package: "swift-openapi-runtime")
             ],
@@ -27,8 +27,8 @@ let package = Package(
             ]
         ),
         .testTarget(
-            name: "SharedModelsTests",
-            dependencies: ["SharedModels"]
+            name: "APISharedModelsTests",
+            dependencies: ["APISharedModels"]
         )
     ]
 )

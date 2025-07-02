@@ -1,6 +1,6 @@
 import Foundation
 
-final class MessageManager: ObservableObject {
+final class MessageManager: ObservableObject, @unchecked Sendable {
     @Published private(set) var messages: [String] = []
 
     func addMessage(_ message: String) {

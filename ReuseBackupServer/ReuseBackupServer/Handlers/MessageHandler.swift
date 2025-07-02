@@ -27,9 +27,7 @@ final class MessageHandler: HTTPHandler {
             return HTTPResponse(statusCode: .badRequest)
         }
 
-        Task { @MainActor in
-            messageManager.addMessage(message)
-        }
+        messageManager.addMessage(message)
         return HTTPResponse(statusCode: .created)
     }
 
@@ -45,9 +43,7 @@ final class MessageHandler: HTTPHandler {
     }
 
     private func handleDelete() async throws -> HTTPResponse {
-        Task { @MainActor in
-            messageManager.clearMessages()
-        }
+        messageManager.clearMessages()
         return HTTPResponse(statusCode: .noContent)
     }
 }

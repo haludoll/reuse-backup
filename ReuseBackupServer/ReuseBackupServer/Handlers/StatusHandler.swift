@@ -23,7 +23,7 @@ final class StatusHandler: HTTPHandler {
                     status: .running,
                     uptime: Int(uptime),
                     version: "1.0.0",
-                    serverTime: ISO8601DateFormatter().string(from: Date())
+                    serverTime: Date()
                 )
 
                 let jsonData = try JSONEncoder().encode(statusResponse)
@@ -38,7 +38,7 @@ final class StatusHandler: HTTPHandler {
                     status: .running, // OpenAPIスキーマでは"running"のみ対応
                     uptime: Int(uptime),
                     version: "1.0.0",
-                    serverTime: ISO8601DateFormatter().string(from: Date())
+                    serverTime: Date()
                 )
 
                 let jsonData = try JSONEncoder().encode(statusResponse)

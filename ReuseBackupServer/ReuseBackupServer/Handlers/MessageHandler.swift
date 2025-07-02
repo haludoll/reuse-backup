@@ -32,7 +32,7 @@ struct MessageHandler: HTTPHandler {
             let response = Components.Schemas.MessageResponse(
                 status: .success,
                 received: true,
-                serverTimestamp: ISO8601DateFormatter().string(from: Date())
+                serverTimestamp: Date()
             )
             
             let jsonData = try JSONEncoder().encode(response)

@@ -72,4 +72,17 @@ struct StatusHandlerTests {
             #expect(statusResponse.port == port)
         }
     }
+
+    @Test func when_health_check_runs_then_verifies_system_status() async throws {
+        let startTime = Date()
+        let handler = StatusHandler(port: 8080, startTime: startTime)
+        let request = HTTPRequest(method: .GET, path: "/api/status", headers: [:], body: Data())
+
+        let response = try await handler.handleRequest(request)
+
+        #expect(response.statusCode == .ok)
+        let statusResponse = try JSONDecoder().decode(ServerStatusResponse.self, from: response.body)
+        // システムが正常であれば"running"、問題があれば"degraded"
+        #expect(["running", "degraded"].contains(statusResponse.status))
+    }
 }

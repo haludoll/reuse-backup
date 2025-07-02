@@ -1,5 +1,6 @@
 import FlyingFox
 import Foundation
+import SystemConfiguration
 
 /// ステータスエンドポイント（/api/status）のハンドラー
 final class StatusHandler: HTTPHandler {
@@ -69,16 +70,49 @@ final class StatusHandler: HTTPHandler {
     private func performHealthCheck() -> (isHealthy: Bool, issues: [String]) {
         var issues: [String] = []
 
-        // 実際に問題となる状況のみチェック
-        // 稼働時間自体は問題ではないため、チェックから除外
+        // メモリ使用量チェック
+        let memoryInfo = mach_task_basic_info()
+        var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size) / 4
+        let memoryResult = withUnsafeMutablePointer(to: &memoryInfo) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: 1) {
+                task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
+            }
+        }
 
-        // 基本的なシステム状態確認
-        // 現在の簡易実装では常に健全と判定
-        // 将来的に以下を追加予定：
-        // - 実際のメモリ使用量チェック
-        // - ディスク容量チェック
-        // - ネットワーク接続状態チェック
+        if memoryResult == KERN_SUCCESS {
+            let memoryUsage = Double(memoryInfo.resident_size) / (1024 * 1024 * 1024) // GB
+            if memoryUsage > 2.0 { // 2GB以上使用時は警告
+                issues.append("High memory usage: \(String(format: "%.2f", memoryUsage))GB")
+            }
+        }
 
-        return (isHealthy: true, issues: issues)
+        // ディスク容量チェック
+        do {
+            let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+            let resourceValues = try documentsPath.resourceValues(forKeys: [.volumeAvailableCapacityKey])
+            if let availableCapacity = resourceValues.volumeAvailableCapacity {
+                let availableGB = Double(availableCapacity) / (1024 * 1024 * 1024)
+                if availableGB < 1.0 { // 1GB未満の場合は警告
+                    issues.append("Low disk space: \(String(format: "%.2f", availableGB))GB remaining")
+                }
+            }
+        } catch {
+            issues.append("Unable to check disk space")
+        }
+
+        // ネットワーク接続状態チェック（簡易）
+        let reachability = SCNetworkReachabilityCreateWithName(nil, "localhost")
+        var flags = SCNetworkReachabilityFlags()
+        if let reachability = reachability,
+           SCNetworkReachabilityGetFlags(reachability, &flags)
+        {
+            if !flags.contains(.reachable) {
+                issues.append("Network connectivity issue detected")
+            }
+        } else {
+            issues.append("Unable to check network connectivity")
+        }
+
+        return (isHealthy: issues.isEmpty, issues: issues)
     }
 }

@@ -6,7 +6,7 @@ import Testing
 /// RootHandlerのテスト
 struct RootHandlerTests {
     @Test func when_handler_initialized_then_port_is_set() async throws {
-        let handler = RootHandler(port: 9090)
+        _ = RootHandler(port: 9090)
         // handler is non-optional, so this test is redundant but kept for completeness
         #expect(true)
     }
@@ -20,7 +20,7 @@ struct RootHandlerTests {
         #expect(response.statusCode == HTTPStatusCode.ok)
         #expect(response.headers[HTTPHeader.contentType] == "application/json")
 
-        let rootResponse = try JSONDecoder().decode(RootResponse.self, from: response.body ?? Data())
+        let rootResponse = try await JSONDecoder().decode(RootResponse.self, from: response.bodyData)
         #expect(rootResponse.status == "success")
         #expect(rootResponse.port == 8080)
         #expect(rootResponse.version == "1.0.0")
@@ -38,7 +38,7 @@ struct RootHandlerTests {
             let response = try await handler.handleRequest(request)
 
             #expect(response.statusCode == HTTPStatusCode.ok)
-            let rootResponse = try JSONDecoder().decode(RootResponse.self, from: response.body ?? Data())
+            let rootResponse = try await JSONDecoder().decode(RootResponse.self, from: response.bodyData)
             #expect(rootResponse.port == port)
         }
     }

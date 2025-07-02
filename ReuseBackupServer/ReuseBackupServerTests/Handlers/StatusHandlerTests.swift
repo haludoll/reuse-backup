@@ -22,7 +22,10 @@ struct StatusHandlerTests {
         #expect(response.statusCode == HTTPStatusCode.ok)
         #expect(response.headers[HTTPHeader.contentType] == "application/json")
 
-        let statusResponse = try JSONDecoder().decode(ServerStatusResponse.self, from: response.body ?? Data())
+        let statusResponse = try await JSONDecoder().decode(
+            ServerStatusResponse.self,
+            from: response.bodyData
+        )
         #expect(statusResponse.status == "running")
         #expect(statusResponse.version == "1.0.0")
         #expect(statusResponse.port == 8080)
@@ -38,7 +41,7 @@ struct StatusHandlerTests {
         let response = try await handler.handleRequest(request)
 
         #expect(response.statusCode == HTTPStatusCode.ok)
-        let statusResponse = try JSONDecoder().decode(ServerStatusResponse.self, from: response.body ?? Data())
+        let statusResponse = try await JSONDecoder().decode(ServerStatusResponse.self, from: response.bodyData)
         #expect(statusResponse.status == "running") // 長時間稼働は正常
         #expect(statusResponse.uptimeSeconds! > 86400) // 24時間以上
     }
@@ -51,7 +54,7 @@ struct StatusHandlerTests {
         let response = try await handler.handleRequest(request)
 
         #expect(response.statusCode == HTTPStatusCode.ok)
-        let statusResponse = try JSONDecoder().decode(ServerStatusResponse.self, from: response.body ?? Data())
+        let statusResponse = try await JSONDecoder().decode(ServerStatusResponse.self, from: response.bodyData)
         let uptime = statusResponse.uptimeSeconds!
 
         #expect(uptime > 299.0)
@@ -69,7 +72,7 @@ struct StatusHandlerTests {
             let response = try await handler.handleRequest(request)
 
             #expect(response.statusCode == HTTPStatusCode.ok)
-            let statusResponse = try JSONDecoder().decode(ServerStatusResponse.self, from: response.body ?? Data())
+            let statusResponse = try await JSONDecoder().decode(ServerStatusResponse.self, from: response.bodyData)
             #expect(statusResponse.port == port)
         }
     }
@@ -82,7 +85,7 @@ struct StatusHandlerTests {
         let response = try await handler.handleRequest(request)
 
         #expect(response.statusCode == HTTPStatusCode.ok)
-        let statusResponse = try JSONDecoder().decode(ServerStatusResponse.self, from: response.body ?? Data())
+        let statusResponse = try await JSONDecoder().decode(ServerStatusResponse.self, from: response.bodyData)
         // システムが正常であれば"running"、問題があれば"degraded"
         #expect(["running", "degraded"].contains(statusResponse.status))
     }

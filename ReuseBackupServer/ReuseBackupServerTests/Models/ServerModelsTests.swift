@@ -56,7 +56,9 @@ struct ServerModelsTests {
         let response = ServerStatusResponse(
             status: status,
             version: version,
-            serverTime: serverTime
+            serverTime: serverTime,
+            port: 8080,
+            uptimeSeconds: 300.0
         )
 
         #expect(response.status == status)
@@ -68,7 +70,9 @@ struct ServerModelsTests {
         let response = ServerStatusResponse(
             status: "running",
             version: "1.0.0",
-            serverTime: "2025-07-01T12:00:00Z"
+            serverTime: "2025-07-01T12:00:00Z",
+            port: 8080,
+            uptimeSeconds: 300.0
         )
 
         let jsonData = try JSONEncoder().encode(response)
@@ -84,7 +88,9 @@ struct ServerModelsTests {
         {
             "status": "stopped",
             "version": "2.0.0",
-            "serverTime": "2025-07-01T15:30:00Z"
+            "serverTime": "2025-07-01T15:30:00Z",
+            "port": 9090,
+            "uptimeSeconds": 600.5
         }
         """
 
@@ -94,5 +100,7 @@ struct ServerModelsTests {
         #expect(response.status == "stopped")
         #expect(response.version == "2.0.0")
         #expect(response.serverTime == "2025-07-01T15:30:00Z")
+        #expect(response.port == 9090)
+        #expect(response.uptimeSeconds == 600.5)
     }
 }

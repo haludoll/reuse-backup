@@ -185,3 +185,15 @@ swift test --package-path SharedModels/
 - **コミット**: タスク完了時に必ずgit commitとpushを実行
 - **コミットメッセージ**: 求められたプロンプトと実施した変更内容を日本語で簡潔に記述
 - **Author情報**: コミットメッセージにAuthor情報は含めない
+
+### コードフォーマット自動実行
+- **自動フォーマット**: タスク実行後に必ずコードフォーマットを実行
+- **フォーマット対象**: Swiftファイル（.swift）のみ
+- **フォーマットコマンド**: `swiftformat`
+- **実行タイミング**: コード変更を伴うタスク完了時
+- **対象ディレクトリ**: ReuseBackupServer/ReuseBackupServer および ReuseBackupServerTests
+
+#### フォーマット実行手順
+1. コード変更を伴うタスクの完了
+2. swift-formatによる自動フォーマット実行
+3. フォーマット後のコードをgit commitに含める

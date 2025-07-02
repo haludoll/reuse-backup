@@ -21,7 +21,12 @@
       "mcp__github__get_me",
       "Bash(git fetch:*)",
       "Bash(git push:*)",
-      "Bash(xcodebuild:*)"
+      "Bash(xcodebuild:*)",
+      "Bash(mkdir:*)",
+      "Bash(mv:*)",
+      "Bash(swift-format format:*)",
+      "Bash(find:*)",
+      "Bash(swiftformat:*)"
     ],
     "deny": []
   }

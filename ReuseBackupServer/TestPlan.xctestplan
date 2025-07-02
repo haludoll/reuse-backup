@@ -1,0 +1,32 @@
+{
+  "configurations" : [
+    {
+      "id" : "8A203A03-9C05-478E-B5D2-8A27DC0CC2B6",
+      "name" : "Configuration 1",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "testTimeoutsEnabled" : true
+  },
+  "testTargets" : [
+    {
+      "enabled" : false,
+      "target" : {
+        "containerPath" : "container:ReuseBackupServer.xcodeproj",
+        "identifier" : "0C973F882E13DF3400DEBDBF",
+        "name" : "ReuseBackupServerUITests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:ReuseBackupServer.xcodeproj",
+        "identifier" : "0C973F7E2E13DF3400DEBDBF",
+        "name" : "ReuseBackupServerTests"
+      }
+    }
+  ],
+  "version" : 1
+}

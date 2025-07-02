@@ -1,0 +1,159 @@
+import Foundation
+import OSLog
+
+/// サーバー管理のためのViewModel
+///
+/// MVVMアーキテクチャにおけるViewModel層として、サーバーの状態管理と
+/// ビジネスロジックを担当します。UIとサービス層の橋渡しを行います。
+@MainActor
+final class ServerViewModel: ObservableObject {
+    // MARK: - Published Properties
+
+    /// サーバーの実行状態
+    @Published var isRunning = false
+
+    /// サーバーの現在のステータス
+    @Published var serverStatus: ServerStatus = .stopped
+
+    /// エラーメッセージ（エラー発生時に表示）
+    @Published var errorMessage: String?
+
+    // MARK: - Private Properties
+
+    /// HTTPサーバーサービス
+    private let httpServerService: HTTPServerServiceProtocol
+
+    /// ログ出力用のLogger
+    private let logger = Logger(subsystem: "com.haludoll.ReuseBackupServer", category: "ServerViewModel")
+
+    // MARK: - Initialization
+
+    /// ServerViewModelを初期化
+    ///
+    /// - Parameter httpServerService: HTTPサーバーサービスの実装（デフォルト: HTTPServerService）
+    init(httpServerService: HTTPServerServiceProtocol = HTTPServerService()) {
+        self.httpServerService = httpServerService
+        logger.info("ServerViewModel initialized")
+    }
+
+    // MARK: - Server Control Methods
+
+    /// HTTPサーバーを開始
+    ///
+    /// サーバーの開始処理を行い、状態を更新します。
+    /// エラーが発生した場合は適切なエラーハンドリングを行います。
+    func startServer() async {
+        guard !isRunning else {
+            logger.warning("Server is already running")
+            return
+        }
+
+        serverStatus = .starting
+        errorMessage = nil
+        logger.info("Starting HTTP server")
+
+        do {
+            try await httpServerService.start()
+
+            await MainActor.run {
+                isRunning = true
+                serverStatus = .running
+            }
+            logger.info("HTTP server started successfully")
+
+        } catch {
+            let errorMsg = "Failed to start server: \(error.localizedDescription)"
+            logger.error("\(errorMsg)")
+
+            await MainActor.run {
+                serverStatus = .error(errorMsg)
+                errorMessage = errorMsg
+                isRunning = false
+            }
+        }
+    }
+
+    /// HTTPサーバーを停止
+    ///
+    /// サーバーの停止処理を行い、状態を更新します。
+    func stopServer() async {
+        guard isRunning else {
+            logger.warning("Server is not running")
+            return
+        }
+
+        serverStatus = .stopping
+        logger.info("Stopping HTTP server")
+
+        await httpServerService.stop()
+
+        await MainActor.run {
+            isRunning = false
+            serverStatus = .stopped
+            errorMessage = nil
+        }
+
+        logger.info("HTTP server stopped")
+    }
+
+    /// サーバーの状態を手動で更新
+    ///
+    /// UI更新やデバッグ目的で使用します。
+    func refreshServerStatus() {
+        isRunning = httpServerService.isRunning
+
+        if isRunning {
+            serverStatus = .running
+        } else {
+            serverStatus = .stopped
+        }
+    }
+
+    // MARK: - Computed Properties
+
+    /// サーバーのポート番号を文字列で返す
+    var portString: String {
+        return "8080"
+    }
+
+    /// サーバーステータスの表示用文字列
+    var statusDisplayText: String {
+        switch serverStatus {
+        case .stopped:
+            return "停止中"
+        case .starting:
+            return "開始中..."
+        case .running:
+            return "稼働中"
+        case .stopping:
+            return "停止中..."
+        case let .error(message):
+            return "エラー: \(message)"
+        }
+    }
+
+    /// サーバーコントロールボタンのタイトル
+    var controlButtonTitle: String {
+        switch serverStatus {
+        case .stopped, .error:
+            return "サーバー開始"
+        case .starting:
+            return "開始中..."
+        case .running:
+            return "サーバー停止"
+        case .stopping:
+            return "停止中..."
+        }
+    }
+
+    /// サーバーコントロールボタンが無効かどうか
+    var isControlButtonDisabled: Bool {
+        return serverStatus == .starting || serverStatus == .stopping
+    }
+
+    // MARK: - Cleanup
+
+    deinit {
+        logger.info("ServerViewModel deinitialized")
+    }
+}

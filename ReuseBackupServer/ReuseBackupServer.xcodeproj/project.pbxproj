@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		0C9740642E14199C00DEBDBF /* FlyingFox in Frameworks */ = {isa = PBXBuildFile; productRef = 0C9740632E14199C00DEBDBF /* FlyingFox */; };
+		0C9740812E14267A00DEBDBF /* TestPlan.xctestplan in Resources */ = {isa = PBXBuildFile; fileRef = 0C9740802E14267A00DEBDBF /* TestPlan.xctestplan */; };
+/* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
 		0C973F802E13DF3400DEBDBF /* PBXContainerItemProxy */ = {
@@ -28,6 +32,7 @@
 		0C973F722E13DF3000DEBDBF /* ReuseBackupServer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ReuseBackupServer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		0C973F7F2E13DF3400DEBDBF /* ReuseBackupServerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ReuseBackupServerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		0C973F892E13DF3400DEBDBF /* ReuseBackupServerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ReuseBackupServerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		0C9740802E14267A00DEBDBF /* TestPlan.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = TestPlan.xctestplan; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -53,6 +58,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0C9740642E14199C00DEBDBF /* FlyingFox in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -76,6 +82,7 @@
 		0C973F692E13DF3000DEBDBF = {
 			isa = PBXGroup;
 			children = (
+				0C9740802E14267A00DEBDBF /* TestPlan.xctestplan */,
 				0C973F742E13DF3000DEBDBF /* ReuseBackupServer */,
 				0C973F822E13DF3400DEBDBF /* ReuseBackupServerTests */,
 				0C973F8C2E13DF3400DEBDBF /* ReuseBackupServerUITests */,
@@ -113,6 +120,7 @@
 			);
 			name = ReuseBackupServer;
 			packageProductDependencies = (
+				0C9740632E14199C00DEBDBF /* FlyingFox */,
 			);
 			productName = ReuseBackupServer;
 			productReference = 0C973F722E13DF3000DEBDBF /* ReuseBackupServer.app */;
@@ -197,6 +205,7 @@
 			mainGroup = 0C973F692E13DF3000DEBDBF;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				0C9740622E14199C00DEBDBF /* XCRemoteSwiftPackageReference "FlyingFox" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 0C973F732E13DF3000DEBDBF /* Products */;
@@ -215,6 +224,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0C9740812E14267A00DEBDBF /* TestPlan.xctestplan in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -590,6 +600,24 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		0C9740622E14199C00DEBDBF /* XCRemoteSwiftPackageReference "FlyingFox" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/swhitty/FlyingFox";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.24.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		0C9740632E14199C00DEBDBF /* FlyingFox */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 0C9740622E14199C00DEBDBF /* XCRemoteSwiftPackageReference "FlyingFox" */;
+			productName = FlyingFox;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 0C973F6A2E13DF3000DEBDBF /* Project object */;
 }

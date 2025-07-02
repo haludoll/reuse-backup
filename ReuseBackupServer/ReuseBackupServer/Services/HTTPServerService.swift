@@ -66,12 +66,9 @@ final class HTTPServerService: HTTPServerServiceProtocol {
         let server = serverFactory.createServer(port: port)
         let currentStartTime = Date()
 
-        // ハンドラーを作成
-        let rootHandler = RootHandler(port: port)
         let statusHandler = StatusHandler(port: port, startTime: currentStartTime)
         let messageHandler = MessageHandler(messageManager: messageManager)
 
-        await server.appendRoute(.init(method: .GET, path: "/"), to: rootHandler)
         await server.appendRoute(.init(method: .GET, path: "/api/status"), to: statusHandler)
         await server.appendRoute(.init(method: .POST, path: "/api/messages"), to: messageHandler)
         await server.appendRoute(.init(method: .GET, path: "/api/messages"), to: messageHandler)

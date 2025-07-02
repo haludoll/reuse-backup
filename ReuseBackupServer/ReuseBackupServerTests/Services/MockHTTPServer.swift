@@ -3,7 +3,7 @@ import Foundation
 @testable import ReuseBackupServer
 
 /// テスト用のモックHTTPサーバー
-final class MockHTTPServer: HTTPServerProtocol {
+final class MockHTTPServer: HTTPServerProtocol, @unchecked Sendable {
     // MARK: - Properties
 
     let port: UInt16
@@ -116,7 +116,8 @@ extension MockHTTPServer {
 
 // MARK: - HTTPRoute Hashable Extension
 
-extension HTTPRoute: Hashable {
+extension HTTPRoute: @retroactive Equatable {}
+extension HTTPRoute: @retroactive Hashable {
     public func hash(into hasher: inout Hasher) {
         hasher.combine(methods)
         for component in path {
@@ -130,7 +131,7 @@ extension HTTPRoute: Hashable {
 }
 
 /// テスト用のモックHTTPサーバーファクトリー
-final class MockHTTPServerFactory: HTTPServerFactory {
+final class MockHTTPServerFactory: HTTPServerFactory, @unchecked Sendable {
     private(set) var createServerCallCount = 0
     private(set) var lastCreatedPort: UInt16?
     private(set) var createdServers: [MockHTTPServer] = []

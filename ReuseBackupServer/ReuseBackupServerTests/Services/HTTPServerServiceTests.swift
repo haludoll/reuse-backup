@@ -62,9 +62,11 @@ struct HTTPServerServiceTests {
             return
         }
 
-        #expect(mockServer.appendRouteCallCount == 2)
-        #expect(mockServer.hasRoute(.init(method: .GET, path: "/")))
+        #expect(mockServer.appendRouteCallCount == 4)
         #expect(mockServer.hasRoute(.init(method: .GET, path: "/api/status")))
+        #expect(mockServer.hasRoute(.init(method: .POST, path: "/api/messages")))
+        #expect(mockServer.hasRoute(.init(method: .GET, path: "/api/messages")))
+        #expect(mockServer.hasRoute(.init(method: .DELETE, path: "/api/messages")))
 
         await service.stop()
     }
@@ -126,22 +128,6 @@ struct HTTPServerServiceTests {
     }
 
     // MARK: - Route Handler Tests
-
-    @Test func when_root_handler_configured_then_route_exists() async throws {
-        let mockFactory = MockHTTPServerFactory()
-        let service = HTTPServerService(port: 8080, serverFactory: mockFactory)
-
-        try await service.start()
-
-        guard let mockServer = mockFactory.lastCreatedServer else {
-            #expect(Bool(false), "Mock server should exist")
-            return
-        }
-
-        #expect(mockServer.hasRoute(.init(method: .GET, path: "/")))
-
-        await service.stop()
-    }
 
     @Test func when_status_handler_configured_then_route_exists() async throws {
         let mockFactory = MockHTTPServerFactory()

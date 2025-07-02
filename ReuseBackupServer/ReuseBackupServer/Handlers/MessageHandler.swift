@@ -21,7 +21,9 @@ struct MessageHandler: HTTPHandler {
     private func handlePost(_ request: HTTPRequest) async throws -> HTTPResponse {
         do {
             let body = try await request.bodyData
-            let messageRequest = try JSONDecoder().decode(Components.Schemas.MessageRequest.self, from: body)
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let messageRequest = try decoder.decode(Components.Schemas.MessageRequest.self, from: body)
 
             messageManager.addMessage(messageRequest.message)
 

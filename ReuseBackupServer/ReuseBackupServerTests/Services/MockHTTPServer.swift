@@ -118,12 +118,14 @@ extension MockHTTPServer {
 
 extension HTTPRoute: Hashable {
     public func hash(into hasher: inout Hasher) {
-        hasher.combine(method.rawValue)
-        hasher.combine(path)
+        hasher.combine(methods)
+        for component in path {
+            hasher.combine(component.description)
+        }
     }
 
     public static func == (lhs: HTTPRoute, rhs: HTTPRoute) -> Bool {
-        lhs.method == rhs.method && lhs.path == rhs.path
+        lhs.methods == rhs.methods && lhs.path == rhs.path
     }
 }
 

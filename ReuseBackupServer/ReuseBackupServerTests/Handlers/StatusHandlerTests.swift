@@ -11,7 +11,7 @@ struct StatusHandlerTests {
         #expect(handler != nil)
     }
 
-    @Test func when_basic_request_then_returns_json_status() async throws {
+    @Test func when_healthy_server_then_returns_running_status() async throws {
         let startTime = Date(timeIntervalSinceNow: -100)
         let handler = StatusHandler(port: 8080, startTime: startTime)
         let request = HTTPRequest(method: .GET, path: "/api/status", headers: [:], body: Data())
@@ -26,6 +26,20 @@ struct StatusHandlerTests {
         #expect(statusResponse.version == "1.0.0")
         #expect(statusResponse.port == 8080)
         #expect(statusResponse.uptimeSeconds != nil)
+    }
+
+    @Test func when_long_uptime_then_returns_degraded_status() async throws {
+        // 24時間以上前の開始時刻を設定
+        let startTime = Date(timeIntervalSinceNow: -90000) // 25時間前
+        let handler = StatusHandler(port: 8080, startTime: startTime)
+        let request = HTTPRequest(method: .GET, path: "/api/status", headers: [:], body: Data())
+
+        let response = try await handler.handleRequest(request)
+
+        #expect(response.statusCode == .ok)
+        let statusResponse = try JSONDecoder().decode(ServerStatusResponse.self, from: response.body)
+        #expect(statusResponse.status == "degraded")
+        #expect(statusResponse.uptimeSeconds! > 86400) // 24時間以上
     }
 
     @Test func when_uptime_calculated_then_reflects_time_difference() async throws {

@@ -21,7 +21,7 @@ struct ServerControlView: View {
             }) {
                 HStack {
                     Image(systemName: buttonIcon)
-                    Text(viewModel.controlButtonTitle)
+                    Text(controlButtonTitle)
                 }
                 .font(.headline)
                 .foregroundColor(.white)
@@ -30,7 +30,7 @@ struct ServerControlView: View {
                 .background(buttonColor)
                 .cornerRadius(12)
             }
-            .disabled(viewModel.isControlButtonDisabled)
+            .disabled(isControlButtonDisabled)
 
             // ステータス更新ボタン
             if !viewModel.isRunning {
@@ -70,7 +70,7 @@ struct ServerControlView: View {
 
     /// ボタンの背景色を返す
     private var buttonColor: Color {
-        if viewModel.isControlButtonDisabled {
+        if isControlButtonDisabled {
             return .gray
         }
 
@@ -84,6 +84,25 @@ struct ServerControlView: View {
         case .stopping:
             return .orange
         }
+    }
+
+    /// サーバーコントロールボタンのタイトル
+    private var controlButtonTitle: String {
+        switch viewModel.serverStatus {
+        case .stopped, .error:
+            return "サーバー開始"
+        case .starting:
+            return "開始中..."
+        case .running:
+            return "サーバー停止"
+        case .stopping:
+            return "停止中..."
+        }
+    }
+
+    /// サーバーコントロールボタンが無効かどうか
+    private var isControlButtonDisabled: Bool {
+        return viewModel.serverStatus == .starting || viewModel.serverStatus == .stopping
     }
 
     /// 状況に応じたヘルプテキストを返す

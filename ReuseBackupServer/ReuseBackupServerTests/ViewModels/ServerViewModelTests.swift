@@ -130,55 +130,6 @@ struct ServerViewModelTests {
         #expect(serverStatus == .running)
     }
 
-    // MARK: - Computed Properties Tests
-
-    @Test func computed_properties_when_stopped() async throws {
-        let mockService = MockHTTPServerService()
-        let viewModel = await ServerViewModel(httpServerService: mockService)
-
-        let portString = await viewModel.portString
-        let statusDisplayText = await viewModel.statusDisplayText
-        let controlButtonTitle = await viewModel.controlButtonTitle
-        let isControlButtonDisabled = await viewModel.isControlButtonDisabled
-
-        #expect(portString == "8080")
-        #expect(statusDisplayText == "停止中")
-        #expect(controlButtonTitle == "サーバー開始")
-        #expect(isControlButtonDisabled == false)
-    }
-
-    @Test func computed_properties_when_running() async throws {
-        let mockService = MockHTTPServerService()
-        let viewModel = await ServerViewModel(httpServerService: mockService)
-
-        // サーバーを開始
-        await viewModel.startServer()
-
-        let statusDisplayText = await viewModel.statusDisplayText
-        let controlButtonTitle = await viewModel.controlButtonTitle
-        let isControlButtonDisabled = await viewModel.isControlButtonDisabled
-
-        #expect(statusDisplayText == "稼働中")
-        #expect(controlButtonTitle == "サーバー停止")
-        #expect(isControlButtonDisabled == false)
-    }
-
-    @Test func computed_properties_when_error() async throws {
-        let mockService = MockHTTPServerService()
-        mockService.shouldThrowOnStart = true
-        let viewModel = await ServerViewModel(httpServerService: mockService)
-
-        // サーバー開始でエラーを発生
-        await viewModel.startServer()
-
-        let statusDisplayText = await viewModel.statusDisplayText
-        let controlButtonTitle = await viewModel.controlButtonTitle
-        let isControlButtonDisabled = await viewModel.isControlButtonDisabled
-
-        #expect(statusDisplayText.contains("エラー") == true)
-        #expect(controlButtonTitle == "サーバー開始")
-        #expect(isControlButtonDisabled == false)
-    }
 
     // MARK: - Edge Cases Tests
 

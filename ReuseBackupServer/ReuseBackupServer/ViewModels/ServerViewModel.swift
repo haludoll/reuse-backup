@@ -103,48 +103,6 @@ final class ServerViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Computed Properties
-
-    /// サーバーのポート番号を文字列で返す
-    var portString: String {
-        return "8080"
-    }
-
-    /// サーバーステータスの表示用文字列
-    var statusDisplayText: String {
-        switch serverStatus {
-        case .stopped:
-            return "停止中"
-        case .starting:
-            return "開始中..."
-        case .running:
-            return "稼働中"
-        case .stopping:
-            return "停止中..."
-        case let .error(message):
-            return "エラー: \(message)"
-        }
-    }
-
-    /// サーバーコントロールボタンのタイトル
-    var controlButtonTitle: String {
-        switch serverStatus {
-        case .stopped, .error:
-            return "サーバー開始"
-        case .starting:
-            return "開始中..."
-        case .running:
-            return "サーバー停止"
-        case .stopping:
-            return "停止中..."
-        }
-    }
-
-    /// サーバーコントロールボタンが無効かどうか
-    var isControlButtonDisabled: Bool {
-        return serverStatus == .starting || serverStatus == .stopping
-    }
-
     // MARK: - Cleanup
 
     deinit {

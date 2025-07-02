@@ -18,13 +18,12 @@ struct ServerStatusView: View {
                     .fill(statusColor)
                     .frame(width: 12, height: 12)
 
-                Text(viewModel.statusDisplayText)
+                Text(statusDisplayText)
                     .font(.body)
                     .fontWeight(.medium)
             }
 
-            // ポート番号表示
-            Text("ポート: \(viewModel.portString)")
+            Text("ポート: 8080")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
@@ -53,6 +52,22 @@ struct ServerStatusView: View {
             return .red
         case .stopped:
             return .gray
+        }
+    }
+
+    /// サーバーステータスの表示用文字列
+    private var statusDisplayText: String {
+        switch viewModel.serverStatus {
+        case .stopped:
+            return "停止中"
+        case .starting:
+            return "開始中..."
+        case .running:
+            return "稼働中"
+        case .stopping:
+            return "停止中..."
+        case let .error(message):
+            return "エラー: \(message)"
         }
     }
 }

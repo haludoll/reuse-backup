@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0C1B558B2E1576D10034CF22 /* APISharedModels in Frameworks */ = {isa = PBXBuildFile; productRef = 0C1B558A2E1576D10034CF22 /* APISharedModels */; };
 		0C9740642E14199C00DEBDBF /* FlyingFox in Frameworks */ = {isa = PBXBuildFile; productRef = 0C9740632E14199C00DEBDBF /* FlyingFox */; };
 		0C9740812E14267A00DEBDBF /* TestPlan.xctestplan in Resources */ = {isa = PBXBuildFile; fileRef = 0C9740802E14267A00DEBDBF /* TestPlan.xctestplan */; };
 /* End PBXBuildFile section */
@@ -58,6 +59,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0C1B558B2E1576D10034CF22 /* APISharedModels in Frameworks */,
 				0C9740642E14199C00DEBDBF /* FlyingFox in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -121,6 +123,7 @@
 			name = ReuseBackupServer;
 			packageProductDependencies = (
 				0C9740632E14199C00DEBDBF /* FlyingFox */,
+				0C1B558A2E1576D10034CF22 /* APISharedModels */,
 			);
 			productName = ReuseBackupServer;
 			productReference = 0C973F722E13DF3000DEBDBF /* ReuseBackupServer.app */;
@@ -206,6 +209,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				0C9740622E14199C00DEBDBF /* XCRemoteSwiftPackageReference "FlyingFox" */,
+				0C1B55892E1576D10034CF22 /* XCLocalSwiftPackageReference "../APISharedModels" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 0C973F732E13DF3000DEBDBF /* Products */;
@@ -600,6 +604,13 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		0C1B55892E1576D10034CF22 /* XCLocalSwiftPackageReference "../APISharedModels" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../APISharedModels;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		0C9740622E14199C00DEBDBF /* XCRemoteSwiftPackageReference "FlyingFox" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -612,6 +623,10 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		0C1B558A2E1576D10034CF22 /* APISharedModels */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = APISharedModels;
+		};
 		0C9740632E14199C00DEBDBF /* FlyingFox */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 0C9740622E14199C00DEBDBF /* XCRemoteSwiftPackageReference "FlyingFox" */;

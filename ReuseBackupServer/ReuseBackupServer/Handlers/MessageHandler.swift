@@ -1,3 +1,4 @@
+import APISharedModels
 import FlyingFox
 import Foundation
 
@@ -12,38 +13,49 @@ struct MessageHandler: HTTPHandler {
         switch request.method {
         case .POST:
             return try await handlePost(request)
-        case .GET:
-            return try await handleGet()
-        case .DELETE:
-            return try await handleDelete()
         default:
             return HTTPResponse(statusCode: .methodNotAllowed)
         }
     }
 
     private func handlePost(_ request: HTTPRequest) async throws -> HTTPResponse {
-        let body = try await request.bodyData
-        guard let message = String(data: body, encoding: .utf8) else {
-            return HTTPResponse(statusCode: .badRequest)
+        do {
+            let body = try await request.bodyData
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let messageRequest = try decoder.decode(Components.Schemas.MessageRequest.self, from: body)
+
+            messageManager.addMessage(messageRequest.message)
+
+            let response = Components.Schemas.MessageResponse(
+                status: .success,
+                received: true,
+                serverTimestamp: Date()
+            )
+
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            let jsonData = try encoder.encode(response)
+            return HTTPResponse(
+                statusCode: .ok,
+                headers: [.contentType: "application/json"],
+                body: jsonData
+            )
+        } catch {
+            let errorResponse = Components.Schemas.ErrorResponse(
+                status: .error,
+                error: "Invalid message format",
+                received: false
+            )
+
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            let jsonData = try encoder.encode(errorResponse)
+            return HTTPResponse(
+                statusCode: .badRequest,
+                headers: [.contentType: "application/json"],
+                body: jsonData
+            )
         }
-
-        messageManager.addMessage(message)
-        return HTTPResponse(statusCode: .created)
-    }
-
-    private func handleGet() async throws -> HTTPResponse {
-        let messages = messageManager.getMessages()
-        let jsonData = try JSONEncoder().encode(messages)
-
-        return HTTPResponse(
-            statusCode: .ok,
-            headers: [.contentType: "application/json"],
-            body: jsonData
-        )
-    }
-
-    private func handleDelete() async throws -> HTTPResponse {
-        messageManager.clearMessages()
-        return HTTPResponse(statusCode: .noContent)
     }
 }

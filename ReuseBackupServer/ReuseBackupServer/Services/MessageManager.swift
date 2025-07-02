@@ -1,6 +1,5 @@
 import Foundation
 
-@MainActor
 final class MessageManager: ObservableObject {
     @Published private(set) var messages: [String] = []
 

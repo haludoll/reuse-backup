@@ -12,9 +12,7 @@ struct MessageListView: View {
                 Spacer()
 
                 Button("Clear") {
-                    Task {
-                        await messageManager.clearMessages()
-                    }
+                    messageManager.clearMessages()
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
@@ -23,7 +21,7 @@ struct MessageListView: View {
             if messageManager.messages.isEmpty {
                 Text("No messages received")
                     .foregroundStyle(.secondary)
-                    .italic()
+                    .font(.system(.body, design: .default).italic())
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding()
             } else {

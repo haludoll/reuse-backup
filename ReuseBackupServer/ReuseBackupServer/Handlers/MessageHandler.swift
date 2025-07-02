@@ -27,12 +27,14 @@ final class MessageHandler: HTTPHandler {
             return HTTPResponse(statusCode: .badRequest)
         }
 
-        await messageManager.addMessage(message)
+        Task { @MainActor in
+            messageManager.addMessage(message)
+        }
         return HTTPResponse(statusCode: .created)
     }
 
     private func handleGet() async throws -> HTTPResponse {
-        let messages = await messageManager.getMessages()
+        let messages = messageManager.getMessages()
         let jsonData = try JSONEncoder().encode(messages)
 
         return HTTPResponse(
@@ -43,7 +45,9 @@ final class MessageHandler: HTTPHandler {
     }
 
     private func handleDelete() async throws -> HTTPResponse {
-        await messageManager.clearMessages()
+        Task { @MainActor in
+            messageManager.clearMessages()
+        }
         return HTTPResponse(statusCode: .noContent)
     }
 }

@@ -26,6 +26,13 @@ final class ServerViewModel: ObservableObject {
     /// ログ出力用のLogger
     private let logger = Logger(subsystem: "com.haludoll.ReuseBackupServer", category: "ServerViewModel")
 
+    // MARK: - Computed Properties
+
+    /// サーバーのポート番号
+    var port: UInt16 {
+        return httpServerService.port
+    }
+
     // MARK: - Initialization
 
     /// ServerViewModelを初期化
@@ -101,13 +108,6 @@ final class ServerViewModel: ObservableObject {
         } else {
             serverStatus = .stopped
         }
-    }
-
-    // MARK: - Computed Properties
-
-    /// サーバーのポート番号
-    var port: UInt16 {
-        return httpServerService.port
     }
 
     // MARK: - Cleanup

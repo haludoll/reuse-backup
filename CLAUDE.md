@@ -212,6 +212,57 @@ self.server = server
 let delay = min(100 * pow(2, retryCount), 10000)
 ```
 
+## Swift コード構造ガイドライン
+
+### プロパティの配置順序
+
+**基本原則**: プロパティは機能的に関連するもの同士を近くに配置し、アクセスレベルと性質により整理する
+
+**推奨配置順序**:
+1. **Stored Properties** (保存プロパティ)
+2. **Computed Properties** (計算プロパティ)  
+3. **Initialization** (イニシャライザ)
+4. **Instance Methods** (インスタンスメソッド)
+5. **Static/Class Members** (静的メンバー)
+
+### MARK活用による構造化
+
+```swift
+class ExampleViewModel: ObservableObject {
+    // MARK: - Published Properties
+    @Published var isLoading = false
+    @Published var data: [Item] = []
+    
+    // MARK: - Private Properties  
+    private let service: ServiceProtocol
+    private let logger = Logger(...)
+    
+    // MARK: - Computed Properties
+    var isDataEmpty: Bool {
+        return data.isEmpty
+    }
+    
+    var displayText: String {
+        return isLoading ? "読み込み中..." : "完了"
+    }
+    
+    // MARK: - Initialization
+    init(service: ServiceProtocol = DefaultService()) {
+        self.service = service
+    }
+    
+    // MARK: - Public Methods
+    func loadData() async { ... }
+    
+    // MARK: - Private Methods
+    private func processData() { ... }
+}
+```
+
+### アクセス修飾子の配置
+- **public** → **internal** → **private** の順序
+- 同じアクセスレベル内では機能グループで整理
+
 ## タスク完了時の運用
 
 ### Git運用ルール

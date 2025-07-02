@@ -65,10 +65,8 @@ final class HTTPServerService: HTTPServerServiceProtocol {
             do {
                 try await server.run()
             } catch {
-                await MainActor.run {
-                    self.server = nil
-                    self.serverTask = nil
-                }
+                self.server = nil
+                self.serverTask = nil
                 logger.error("HTTP server stopped with error: \(error.localizedDescription)")
             }
         }

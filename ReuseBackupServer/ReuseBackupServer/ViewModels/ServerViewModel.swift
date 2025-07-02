@@ -44,32 +44,28 @@ final class ServerViewModel: ObservableObject {
     /// エラーが発生した場合は適切なエラーハンドリングを行います。
     func startServer() async {
         guard !isRunning else {
-            logger.warning("Server is already running")
+            logger.warning("Server status: already running")
             return
         }
 
         serverStatus = .starting
         errorMessage = nil
-        logger.info("Starting HTTP server")
+        logger.info("Server status: starting")
 
         do {
             try await httpServerService.start()
 
-            await MainActor.run {
-                isRunning = true
-                serverStatus = .running
-            }
-            logger.info("HTTP server started successfully")
+            isRunning = true
+            serverStatus = .running
+            logger.info("Server status: running")
 
         } catch {
             let errorMsg = "Failed to start server: \(error.localizedDescription)"
-            logger.error("\(errorMsg)")
 
-            await MainActor.run {
-                serverStatus = .error(errorMsg)
-                errorMessage = errorMsg
-                isRunning = false
-            }
+            isRunning = false
+            serverStatus = .error(errorMsg)
+            errorMessage = errorMsg
+            logger.error("Server status: error - \(errorMsg)")
         }
     }
 
@@ -78,22 +74,20 @@ final class ServerViewModel: ObservableObject {
     /// サーバーの停止処理を行い、状態を更新します。
     func stopServer() async {
         guard isRunning else {
-            logger.warning("Server is not running")
+            logger.warning("Server status: not running")
             return
         }
 
         serverStatus = .stopping
-        logger.info("Stopping HTTP server")
+        logger.info("Server status: stopping")
 
         await httpServerService.stop()
 
-        await MainActor.run {
-            isRunning = false
-            serverStatus = .stopped
-            errorMessage = nil
-        }
+        isRunning = false
+        serverStatus = .stopped
+        errorMessage = nil
 
-        logger.info("HTTP server stopped")
+        logger.info("Server status: stopped")
     }
 
     /// サーバーの状態を手動で更新

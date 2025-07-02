@@ -38,16 +38,6 @@ struct ServerStatusResponse: Codable {
     let uptimeSeconds: TimeInterval?
 }
 
-/// ルートエンドポイントのレスポンス構造体
-struct RootResponse: Codable {
-    let status: String
-    let message: String
-    let version: String
-    let port: UInt16
-    let serverTime: String
-    let endpoints: [String]
-}
-
 /// エラーレスポンスの構造体
 struct ErrorResponse: Codable {
     let error: String

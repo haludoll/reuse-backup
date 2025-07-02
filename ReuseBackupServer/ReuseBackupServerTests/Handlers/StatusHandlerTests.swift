@@ -7,7 +7,7 @@ import Testing
 struct StatusHandlerTests {
     @Test func when_handler_initialized_then_properties_are_set() async throws {
         let startTime = Date()
-        let handler = StatusHandler(port: 9090, startTime: startTime)
+        _ = StatusHandler(port: 9090, startTime: startTime)
         // handler is non-optional, so this test is redundant but kept for completeness
         #expect(true)
     }

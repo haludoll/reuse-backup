@@ -38,6 +38,8 @@ struct ContentView: View {
                 .background(Color(.systemGroupedBackground))
                 .cornerRadius(12)
 
+            MessageListView(messageManager: viewModel.messageManager)
+
             Spacer()
 
             ServerControlView(viewModel: viewModel)

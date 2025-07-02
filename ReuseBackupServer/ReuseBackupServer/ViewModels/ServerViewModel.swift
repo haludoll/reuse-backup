@@ -33,6 +33,14 @@ final class ServerViewModel: ObservableObject {
         return httpServerService.port
     }
 
+    /// メッセージマネージャー
+    var messageManager: MessageManager {
+        guard let service = httpServerService as? HTTPServerService else {
+            fatalError("HTTPServerService required for message functionality")
+        }
+        return service.messageManager
+    }
+
     // MARK: - Initialization
 
     /// ServerViewModelを初期化

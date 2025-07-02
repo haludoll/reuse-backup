@@ -14,6 +14,9 @@ final class HTTPServerService: HTTPServerServiceProtocol {
     /// FlyingFoxのHTTPサーバーインスタンス
     private var server: FlyingFox.HTTPServer?
 
+    /// サーバー実行中のタスク
+    private var serverTask: Task<Void, Never>?
+
     /// サーバーが使用するポート番号
     private let port: UInt16
 
@@ -36,6 +39,7 @@ final class HTTPServerService: HTTPServerServiceProtocol {
     /// HTTPサーバーを開始
     ///
     /// FlyingFoxを使用してHTTPサーバーを開始し、ルートとAPIエンドポイントを設定します。
+    /// サーバーは別タスクで非同期実行され、即座に制御が戻ります。
     /// - Throws: サーバー開始に失敗した場合のエラー
     func start() async throws {
         guard server == nil else {
@@ -53,15 +57,28 @@ final class HTTPServerService: HTTPServerServiceProtocol {
         // APIエンドポイント
         await server.appendRoute(.init(method: .GET, path: "/api/status"), to: ClosureHTTPHandler(statusHandler))
 
-        try await server.run()
-
+        // サーバーインスタンスを先に保存
         self.server = server
+
+        // サーバーを別タスクで非同期実行
+        serverTask = Task {
+            do {
+                try await server.run()
+            } catch {
+                await MainActor.run {
+                    self.server = nil
+                    self.serverTask = nil
+                }
+                logger.error("HTTP server stopped with error: \(error.localizedDescription)")
+            }
+        }
+
         logger.info("HTTP server started successfully on port \(port)")
     }
 
     /// HTTPサーバーを停止
     ///
-    /// 実行中のFlyingFoxサーバーを停止します。
+    /// 実行中のFlyingFoxサーバーを停止し、関連するタスクもキャンセルします。
     func stop() async {
         guard let server = server else {
             logger.warning("Server is not running")
@@ -70,8 +87,16 @@ final class HTTPServerService: HTTPServerServiceProtocol {
 
         logger.info("Stopping HTTP server")
 
+        // サーバータスクをキャンセル
+        serverTask?.cancel()
+
+        // サーバーを停止
         await server.stop()
+
+        // プロパティをクリア
         self.server = nil
+        serverTask = nil
+
         logger.info("HTTP server stopped")
     }
 

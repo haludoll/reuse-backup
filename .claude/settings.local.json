@@ -26,7 +26,8 @@
       "Bash(mv:*)",
       "Bash(swift-format format:*)",
       "Bash(find:*)",
-      "Bash(swiftformat:*)"
+      "Bash(swiftformat:*)",
+      "Bash(gh pr create:*)"
     ],
     "deny": []
   }

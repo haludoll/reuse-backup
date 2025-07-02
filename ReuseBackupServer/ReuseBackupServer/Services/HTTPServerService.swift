@@ -47,7 +47,7 @@ final class HTTPServerService: HTTPServerServiceProtocol {
             return
         }
 
-        logger.info("Starting HTTP server on port \(port)")
+        logger.info("Starting HTTP server on port \(self.port)")
 
         let server = HTTPServer(port: port)
 
@@ -66,7 +66,7 @@ final class HTTPServerService: HTTPServerServiceProtocol {
             }
         }
 
-        logger.info("HTTP server started successfully on port \(port)")
+        logger.info("HTTP server started successfully on port \(self.port)")
     }
 
     /// HTTPサーバーを停止

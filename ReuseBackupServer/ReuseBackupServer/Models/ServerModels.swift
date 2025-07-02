@@ -30,7 +30,7 @@ enum ServerStatus: Equatable {
 // MARK: - Response Models
 
 /// サーバーステータスレスポンスの構造体
-struct ServerStatusResponse: Encodable {
+struct ServerStatusResponse: Codable {
     let status: String
     let version: String
     let serverTime: String

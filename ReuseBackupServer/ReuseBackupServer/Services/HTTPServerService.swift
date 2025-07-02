@@ -8,6 +8,7 @@ import OSLog
 /// 主な機能：
 /// - `/` - サーバー基本情報
 /// - `/api/status` - サーバーステータス情報の取得
+/// - `/api/messages` - メッセージAPI（POST/GET/DELETE）
 final class HTTPServerService: HTTPServerServiceProtocol {
     // MARK: - Properties
 
@@ -25,6 +26,9 @@ final class HTTPServerService: HTTPServerServiceProtocol {
 
     /// サーバー開始時刻
     private var startTime: Date?
+
+    /// メッセージ管理
+    let messageManager = MessageManager()
 
     /// ログ出力用のLogger
     private let logger = Logger(subsystem: "com.haludoll.ReuseBackupServer", category: "HTTPServerService")
@@ -65,9 +69,13 @@ final class HTTPServerService: HTTPServerServiceProtocol {
         // ハンドラーを作成
         let rootHandler = RootHandler(port: port)
         let statusHandler = StatusHandler(port: port, startTime: currentStartTime)
+        let messageHandler = MessageHandler(messageManager: messageManager)
 
         await server.appendRoute(.init(method: .GET, path: "/"), to: rootHandler)
         await server.appendRoute(.init(method: .GET, path: "/api/status"), to: statusHandler)
+        await server.appendRoute(.init(method: .POST, path: "/api/messages"), to: messageHandler)
+        await server.appendRoute(.init(method: .GET, path: "/api/messages"), to: messageHandler)
+        await server.appendRoute(.init(method: .DELETE, path: "/api/messages"), to: messageHandler)
 
         // server.run()は永続的にawaitするため、先にインスタンスを保存
         self.server = server

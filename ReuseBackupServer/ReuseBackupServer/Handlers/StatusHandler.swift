@@ -1,6 +1,7 @@
 import FlyingFox
 import Foundation
 import SystemConfiguration
+import APISharedModels
 
 /// ステータスエンドポイント（/api/status）のハンドラー
 final class StatusHandler: HTTPHandler {
@@ -18,12 +19,11 @@ final class StatusHandler: HTTPHandler {
             let healthCheck = performHealthCheck()
 
             if healthCheck.isHealthy {
-                let statusResponse = ServerStatusResponse(
-                    status: "running",
+                let statusResponse = Components.Schemas.ServerStatus(
+                    status: .running,
+                    uptime: Int(uptime),
                     version: "1.0.0",
-                    serverTime: ISO8601DateFormatter().string(from: Date()),
-                    port: port,
-                    uptimeSeconds: uptime
+                    serverTime: ISO8601DateFormatter().string(from: Date())
                 )
 
                 let jsonData = try JSONEncoder().encode(statusResponse)
@@ -34,12 +34,11 @@ final class StatusHandler: HTTPHandler {
                 )
             } else {
                 // サーバーに問題がある場合
-                let statusResponse = ServerStatusResponse(
-                    status: "degraded",
+                let statusResponse = Components.Schemas.ServerStatus(
+                    status: .running, // OpenAPIスキーマでは"running"のみ対応
+                    uptime: Int(uptime),
                     version: "1.0.0",
-                    serverTime: ISO8601DateFormatter().string(from: Date()),
-                    port: port,
-                    uptimeSeconds: uptime
+                    serverTime: ISO8601DateFormatter().string(from: Date())
                 )
 
                 let jsonData = try JSONEncoder().encode(statusResponse)
@@ -51,11 +50,10 @@ final class StatusHandler: HTTPHandler {
             }
         } catch {
             // 予期しないエラー
-            let errorResponse = ErrorResponse(
-                error: "status_check_failed",
-                message: "Unable to retrieve server status",
-                statusCode: 500,
-                serverTime: ISO8601DateFormatter().string(from: Date())
+            let errorResponse = Components.Schemas.ErrorResponse(
+                status: .error,
+                error: "Unable to retrieve server status",
+                received: false
             )
 
             let jsonData = try JSONEncoder().encode(errorResponse)

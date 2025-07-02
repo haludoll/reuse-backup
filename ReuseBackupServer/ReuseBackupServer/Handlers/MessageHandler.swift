@@ -1,5 +1,6 @@
 import FlyingFox
 import Foundation
+import APISharedModels
 
 struct MessageHandler: HTTPHandler {
     private let messageManager: MessageManager
@@ -22,13 +23,38 @@ struct MessageHandler: HTTPHandler {
     }
 
     private func handlePost(_ request: HTTPRequest) async throws -> HTTPResponse {
-        let body = try await request.bodyData
-        guard let message = String(data: body, encoding: .utf8) else {
-            return HTTPResponse(statusCode: .badRequest)
+        do {
+            let body = try await request.bodyData
+            let messageRequest = try JSONDecoder().decode(Components.Schemas.MessageRequest.self, from: body)
+            
+            messageManager.addMessage(messageRequest.message)
+            
+            let response = Components.Schemas.MessageResponse(
+                status: .success,
+                received: true,
+                serverTimestamp: ISO8601DateFormatter().string(from: Date())
+            )
+            
+            let jsonData = try JSONEncoder().encode(response)
+            return HTTPResponse(
+                statusCode: .ok,
+                headers: [.contentType: "application/json"],
+                body: jsonData
+            )
+        } catch {
+            let errorResponse = Components.Schemas.ErrorResponse(
+                status: .error,
+                error: "Invalid message format",
+                received: false
+            )
+            
+            let jsonData = try JSONEncoder().encode(errorResponse)
+            return HTTPResponse(
+                statusCode: .badRequest,
+                headers: [.contentType: "application/json"],
+                body: jsonData
+            )
         }
-
-        messageManager.addMessage(message)
-        return HTTPResponse(statusCode: .created)
     }
 
     private func handleGet() async throws -> HTTPResponse {

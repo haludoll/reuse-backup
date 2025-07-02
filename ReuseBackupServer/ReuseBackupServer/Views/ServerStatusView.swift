@@ -23,7 +23,7 @@ struct ServerStatusView: View {
                     .fontWeight(.medium)
             }
 
-            Text("ポート: 8080")
+            Text("ポート: \(viewModel.port)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 

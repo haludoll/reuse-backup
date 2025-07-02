@@ -18,7 +18,7 @@ final class HTTPServerService: HTTPServerServiceProtocol {
     private var serverTask: Task<Void, Never>?
 
     /// サーバーが使用するポート番号
-    private let port: UInt16
+    let port: UInt16
 
     /// ログ出力用のLogger
     private let logger = Logger(subsystem: "com.haludoll.ReuseBackupServer", category: "HTTPServerService")

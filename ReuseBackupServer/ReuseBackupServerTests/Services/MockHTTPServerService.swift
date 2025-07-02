@@ -15,6 +15,9 @@ import Foundation
 class MockHTTPServerService: HTTPServerServiceProtocol {
     /// サーバーの実行状態（テスト用）
     private(set) var isRunning: Bool = false
+    
+    /// サーバーが使用するポート番号（テスト用）
+    let port: UInt16 = 8080
 
     /// 開始が呼ばれた回数（テスト検証用）
     private(set) var startCallCount = 0

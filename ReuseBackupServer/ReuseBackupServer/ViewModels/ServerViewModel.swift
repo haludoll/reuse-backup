@@ -103,6 +103,13 @@ final class ServerViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Computed Properties
+
+    /// サーバーのポート番号
+    var port: UInt16 {
+        return httpServerService.port
+    }
+
     // MARK: - Cleanup
 
     deinit {

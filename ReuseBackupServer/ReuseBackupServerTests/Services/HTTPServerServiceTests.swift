@@ -62,11 +62,9 @@ struct HTTPServerServiceTests {
             return
         }
 
-        #expect(mockServer.appendRouteCallCount == 4)
+        #expect(mockServer.appendRouteCallCount == 2)
         #expect(mockServer.hasRoute(.init(method: .GET, path: "/api/status")))
-        #expect(mockServer.hasRoute(.init(method: .POST, path: "/api/messages")))
-        #expect(mockServer.hasRoute(.init(method: .GET, path: "/api/messages")))
-        #expect(mockServer.hasRoute(.init(method: .DELETE, path: "/api/messages")))
+        #expect(mockServer.hasRoute(.init(method: .POST, path: "/api/message")))
 
         await service.stop()
     }

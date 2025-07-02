@@ -1,3 +1,4 @@
+import APISharedModels
 import FlyingFox
 import Foundation
 @testable import ReuseBackupServer
@@ -22,14 +23,15 @@ struct StatusHandlerTests {
         #expect(response.statusCode == HTTPStatusCode.ok)
         #expect(response.headers[HTTPHeader.contentType] == "application/json")
 
-        let statusResponse = try await JSONDecoder().decode(
-            ServerStatusResponse.self,
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let statusResponse = try await decoder.decode(
+            Components.Schemas.ServerStatus.self,
             from: response.bodyData
         )
-        #expect(statusResponse.status == "running")
+        #expect(statusResponse.status == .running)
         #expect(statusResponse.version == "1.0.0")
-        #expect(statusResponse.port == 8080)
-        #expect(statusResponse.uptimeSeconds != nil)
+        #expect(statusResponse.uptime >= 100)
     }
 
     @Test func when_long_uptime_then_returns_running_status() async throws {
@@ -41,9 +43,11 @@ struct StatusHandlerTests {
         let response = try await handler.handleRequest(request)
 
         #expect(response.statusCode == HTTPStatusCode.ok)
-        let statusResponse = try await JSONDecoder().decode(ServerStatusResponse.self, from: response.bodyData)
-        #expect(statusResponse.status == "running") // 長時間稼働は正常
-        #expect(statusResponse.uptimeSeconds! > 86400) // 24時間以上
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let statusResponse = try await decoder.decode(Components.Schemas.ServerStatus.self, from: response.bodyData)
+        #expect(statusResponse.status == .running) // 長時間稼働は正常
+        #expect(statusResponse.uptime > 86400) // 24時間以上
     }
 
     @Test func when_uptime_calculated_then_reflects_time_difference() async throws {
@@ -54,14 +58,16 @@ struct StatusHandlerTests {
         let response = try await handler.handleRequest(request)
 
         #expect(response.statusCode == HTTPStatusCode.ok)
-        let statusResponse = try await JSONDecoder().decode(ServerStatusResponse.self, from: response.bodyData)
-        let uptime = statusResponse.uptimeSeconds!
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let statusResponse = try await decoder.decode(Components.Schemas.ServerStatus.self, from: response.bodyData)
+        let uptime = statusResponse.uptime
 
-        #expect(uptime > 299.0)
-        #expect(uptime < 301.0)
+        #expect(uptime > 299)
+        #expect(uptime < 301)
     }
 
-    @Test func when_different_ports_then_response_reflects_correct_port() async throws {
+    @Test func when_different_ports_then_returns_running_status() async throws {
         let ports: [UInt16] = [8080, 9090, 3000]
         let startTime = Date()
 
@@ -72,8 +78,10 @@ struct StatusHandlerTests {
             let response = try await handler.handleRequest(request)
 
             #expect(response.statusCode == HTTPStatusCode.ok)
-            let statusResponse = try await JSONDecoder().decode(ServerStatusResponse.self, from: response.bodyData)
-            #expect(statusResponse.port == port)
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let statusResponse = try await decoder.decode(Components.Schemas.ServerStatus.self, from: response.bodyData)
+            #expect(statusResponse.status == .running)
         }
     }
 
@@ -85,8 +93,10 @@ struct StatusHandlerTests {
         let response = try await handler.handleRequest(request)
 
         #expect(response.statusCode == HTTPStatusCode.ok)
-        let statusResponse = try await JSONDecoder().decode(ServerStatusResponse.self, from: response.bodyData)
-        // システムが正常であれば"running"、問題があれば"degraded"
-        #expect(["running", "degraded"].contains(statusResponse.status))
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let statusResponse = try await decoder.decode(Components.Schemas.ServerStatus.self, from: response.bodyData)
+        // システムが正常であれば"running"
+        #expect(statusResponse.status == .running)
     }
 }

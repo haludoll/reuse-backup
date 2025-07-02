@@ -39,8 +39,8 @@ ReuseBackupClient/          # 新しいiPhone用クライアントアプリ
 │   └── PhotoLibrary/     # Photosフレームワーク統合
 └── Tests/
 
-SharedModels/              # 共有Swiftパッケージ
-├── Sources/SharedModels/
+APISharedModels/          # 共有APIモデルSwiftパッケージ
+├── Sources/APISharedModels/
 │   ├── FileMetadata.swift
 │   ├── TransferStatus.swift
 │   └── NetworkModels.swift
@@ -62,9 +62,9 @@ xcodebuild -project ReuseBackupClient/ReuseBackupClient.xcodeproj -scheme ReuseB
 xcodebuild test -project ReuseBackupServer/ReuseBackupServer.xcodeproj -scheme ReuseBackupServer
 xcodebuild test -project ReuseBackupClient/ReuseBackupClient.xcodeproj -scheme ReuseBackupClient
 
-# 共有モデル用Swiftパッケージ
-swift build -c debug --package-path SharedModels/
-swift test --package-path SharedModels/
+# 共有APIモデル用Swiftパッケージ
+swift build -c debug --package-path APISharedModels/
+swift test --package-path APISharedModels/
 ```
 
 ## コアアーキテクチャ
@@ -265,10 +265,22 @@ class ExampleViewModel: ObservableObject {
 
 ## タスク完了時の運用
 
+### 段階的実装の原則
+- **Issue調査の必須**: Issue取り組み前にIssueに紐づくコメントを全て確認
+- **一度で全てを実装しない**: 一度のタスクですべての実装を行わない
+- **段階的指示待ち**: 必要な作業をリストアップ後、上から順に指示を受けて実行
+- **レビュー負荷軽減**: 一度のタスクでのコード差分量を最小限に抑制
+- **独立動作単位**: 各段階は独立して動作確認可能な単位で実装
+
 ### Git運用ルール
 - **コミット**: タスク完了時に必ずgit commitとpushを実行
 - **コミットメッセージ**: 求められたプロンプトと実施した変更内容を日本語で簡潔に記述
 - **Author情報**: コミットメッセージにAuthor情報は含めない
+- **小さなコミット単位**: 複雑な機能実装時は、タスクを小さく分割して1つずつコミット
+  - レビュー負荷軽減のため、一度にすべてを実装せず段階的に進める
+  - 各タスクは独立して動作確認可能な単位で区切る
+  - **TODO単位コミット**: 各TODOタスク完了時に必ずコミットを実行
+  - 例：「モデル定義」→「API実装」→「UI実装」→「エラーハンドリング」
 
 ### コードフォーマット自動実行
 - **自動フォーマット**: タスク実行後に必ずコードフォーマットを実行

@@ -178,6 +178,39 @@ swift test --package-path SharedModels/
 - **命名規則**: `test_when条件_then期待結果` 形式
 - **Arrange-Act-Assert**: テスト構造の統一
 
+## コメント記述ガイドライン
+
+### DocCコメント（推奨）
+- **対象**: public/internal API、クラス、構造体、プロトコル、重要なメソッド
+- **形式**: SwiftDoc形式の三重スラッシュ（`///`）を使用
+- **内容**: 目的、パラメータ、戻り値、使用例を記述
+
+### インラインコメント（最小限）
+- **原則**: コードを見れば分かることは書かない
+- **対象**: 複雑なアルゴリズム、非自明なビジネスロジック、なぜその実装にしたかの理由
+- **避けるべき**: 変数代入、関数呼び出し、自明な処理の説明
+
+### 具体例
+```swift
+// ❌ 悪い例（自明なコメント）
+// ユーザー名を取得
+let username = user.name
+
+// サーバーを開始
+try await server.start()
+
+// ❌ 悪い例（コードの説明）
+// ルートエンドポイント
+await server.appendRoute(.init(method: .GET, path: "/"), to: handler)
+
+// ✅ 良い例（非自明な理由）
+// server.run()は永続的にawaitするため、先にインスタンスを保存
+self.server = server
+
+// ✅ 良い例（複雑なロジックの説明）
+// 指数バックオフで再試行：初回100ms、最大10秒まで倍々で増加
+let delay = min(100 * pow(2, retryCount), 10000)
+```
 
 ## タスク完了時の運用
 

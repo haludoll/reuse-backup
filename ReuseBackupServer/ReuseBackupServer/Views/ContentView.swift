@@ -17,7 +17,6 @@ struct ContentView: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            // ヘッダー
             VStack(spacing: 8) {
                 Image(systemName: "server.rack")
                     .font(.system(size: 50))
@@ -34,7 +33,6 @@ struct ContentView: View {
 
             Spacer()
 
-            // サーバーステータス
             ServerStatusView(viewModel: viewModel)
                 .padding()
                 .background(Color(.systemGroupedBackground))
@@ -42,7 +40,6 @@ struct ContentView: View {
 
             Spacer()
 
-            // コントロールボタン
             ServerControlView(viewModel: viewModel)
         }
         .padding()

@@ -51,16 +51,11 @@ final class HTTPServerService: HTTPServerServiceProtocol {
 
         let server = HTTPServer(port: port)
 
-        // ルートエンドポイント
         await server.appendRoute(.init(method: .GET, path: "/"), to: ClosureHTTPHandler(rootHandler))
-
-        // APIエンドポイント
         await server.appendRoute(.init(method: .GET, path: "/api/status"), to: ClosureHTTPHandler(statusHandler))
 
-        // サーバーインスタンスを先に保存
+        // server.run()は永続的にawaitするため、先にインスタンスを保存
         self.server = server
-
-        // サーバーを別タスクで非同期実行
         serverTask = Task {
             do {
                 try await server.run()
@@ -85,13 +80,9 @@ final class HTTPServerService: HTTPServerServiceProtocol {
 
         logger.info("Stopping HTTP server")
 
-        // サーバータスクをキャンセル
         serverTask?.cancel()
-
-        // サーバーを停止
         await server.stop()
 
-        // プロパティをクリア
         self.server = nil
         serverTask = nil
 

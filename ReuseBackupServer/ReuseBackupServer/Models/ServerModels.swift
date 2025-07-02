@@ -1,8 +1,9 @@
 import Foundation
+import APISharedModels
 
 // MARK: - Server Status
 
-/// サーバーの実行状態を表す列挙型
+/// サーバーの実行状態を表す列挙型（内部状態管理用）
 enum ServerStatus: Equatable {
     /// サーバーが停止中
     case stopped
@@ -28,20 +29,8 @@ enum ServerStatus: Equatable {
 }
 
 // MARK: - Response Models
-
-/// サーバーステータスレスポンスの構造体
-struct ServerStatusResponse: Codable {
-    let status: String
-    let version: String
-    let serverTime: String
-    let port: UInt16
-    let uptimeSeconds: TimeInterval?
-}
-
-/// エラーレスポンスの構造体
-struct ErrorResponse: Codable {
-    let error: String
-    let message: String
-    let statusCode: Int
-    let serverTime: String
-}
+// APISharedModelsの自動生成モデルを使用
+// - Components.Schemas.ServerStatus: サーバーステータスレスポンス
+// - Components.Schemas.ErrorResponse: エラーレスポンス
+// - Components.Schemas.MessageRequest: メッセージリクエスト
+// - Components.Schemas.MessageResponse: メッセージレスポンス

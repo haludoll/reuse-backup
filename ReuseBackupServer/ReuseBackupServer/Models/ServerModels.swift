@@ -1,5 +1,5 @@
-import Foundation
 import APISharedModels
+import Foundation
 
 // MARK: - Server Status
 
@@ -29,6 +29,7 @@ enum ServerStatus: Equatable {
 }
 
 // MARK: - Response Models
+
 // APISharedModelsの自動生成モデルを使用
 // - Components.Schemas.ServerStatus: サーバーステータスレスポンス
 // - Components.Schemas.ErrorResponse: エラーレスポンス

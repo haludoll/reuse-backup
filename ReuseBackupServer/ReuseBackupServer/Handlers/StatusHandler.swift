@@ -1,7 +1,7 @@
+import APISharedModels
 import FlyingFox
 import Foundation
 import SystemConfiguration
-import APISharedModels
 
 /// ステータスエンドポイント（/api/status）のハンドラー
 final class StatusHandler: HTTPHandler {

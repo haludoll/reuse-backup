@@ -28,7 +28,7 @@ struct StatusHandlerTests {
         #expect(statusResponse.uptimeSeconds != nil)
     }
 
-    @Test func when_long_uptime_then_returns_degraded_status() async throws {
+    @Test func when_long_uptime_then_returns_running_status() async throws {
         // 24時間以上前の開始時刻を設定
         let startTime = Date(timeIntervalSinceNow: -90000) // 25時間前
         let handler = StatusHandler(port: 8080, startTime: startTime)
@@ -38,7 +38,7 @@ struct StatusHandlerTests {
 
         #expect(response.statusCode == .ok)
         let statusResponse = try JSONDecoder().decode(ServerStatusResponse.self, from: response.body)
-        #expect(statusResponse.status == "degraded")
+        #expect(statusResponse.status == "running") // 長時間稼働は正常
         #expect(statusResponse.uptimeSeconds! > 86400) // 24時間以上
     }
 

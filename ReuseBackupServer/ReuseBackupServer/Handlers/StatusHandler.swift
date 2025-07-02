@@ -69,22 +69,16 @@ final class StatusHandler: HTTPHandler {
     private func performHealthCheck() -> (isHealthy: Bool, issues: [String]) {
         var issues: [String] = []
 
-        // 稼働時間チェック（長時間稼働でのメモリリーク等）
-        let uptime = Date().timeIntervalSince(startTime)
-        if uptime > 86400 { // 24時間以上
-            issues.append("Long uptime detected")
-        }
+        // 実際に問題となる状況のみチェック
+        // 稼働時間自体は問題ではないため、チェックから除外
 
-        // 簡易メモリチェック
-        let processInfo = ProcessInfo.processInfo
-        let totalMemory = processInfo.physicalMemory
+        // 基本的なシステム状態確認
+        // 現在の簡易実装では常に健全と判定
+        // 将来的に以下を追加予定：
+        // - 実際のメモリ使用量チェック
+        // - ディスク容量チェック
+        // - ネットワーク接続状態チェック
 
-        // 基本的なディスク容量チェック（将来的にファイル保存で必要）
-        if let homeDirectory = NSHomeDirectory().data(using: .utf8) {
-            // ディスク容量が十分かチェック（簡易版）
-            // 実際の実装では適切なディスク容量チェックが必要
-        }
-
-        return (isHealthy: issues.isEmpty, issues: issues)
+        return (isHealthy: true, issues: issues)
     }
 }

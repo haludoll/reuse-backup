@@ -8,20 +8,21 @@ struct StatusHandlerTests {
     @Test func when_handler_initialized_then_properties_are_set() async throws {
         let startTime = Date()
         let handler = StatusHandler(port: 9090, startTime: startTime)
-        #expect(handler != nil)
+        // handler is non-optional, so this test is redundant but kept for completeness
+        #expect(true)
     }
 
     @Test func when_healthy_server_then_returns_running_status() async throws {
         let startTime = Date(timeIntervalSinceNow: -100)
         let handler = StatusHandler(port: 8080, startTime: startTime)
-        let request = HTTPRequest(method: .GET, path: "/api/status", headers: [:], body: Data())
+        let request = HTTPRequest(method: .GET, version: .http11, path: "/api/status", query: [], headers: [:], body: Data())
 
         let response = try await handler.handleRequest(request)
 
-        #expect(response.statusCode == .ok)
-        #expect(response.headers[.contentType] == "application/json")
+        #expect(response.statusCode == HTTPStatusCode.ok)
+        #expect(response.headers[HTTPHeader.contentType] == "application/json")
 
-        let statusResponse = try JSONDecoder().decode(ServerStatusResponse.self, from: response.body)
+        let statusResponse = try JSONDecoder().decode(ServerStatusResponse.self, from: response.body ?? Data())
         #expect(statusResponse.status == "running")
         #expect(statusResponse.version == "1.0.0")
         #expect(statusResponse.port == 8080)
@@ -32,12 +33,12 @@ struct StatusHandlerTests {
         // 24時間以上前の開始時刻を設定
         let startTime = Date(timeIntervalSinceNow: -90000) // 25時間前
         let handler = StatusHandler(port: 8080, startTime: startTime)
-        let request = HTTPRequest(method: .GET, path: "/api/status", headers: [:], body: Data())
+        let request = HTTPRequest(method: .GET, version: .http11, path: "/api/status", query: [], headers: [:], body: Data())
 
         let response = try await handler.handleRequest(request)
 
-        #expect(response.statusCode == .ok)
-        let statusResponse = try JSONDecoder().decode(ServerStatusResponse.self, from: response.body)
+        #expect(response.statusCode == HTTPStatusCode.ok)
+        let statusResponse = try JSONDecoder().decode(ServerStatusResponse.self, from: response.body ?? Data())
         #expect(statusResponse.status == "running") // 長時間稼働は正常
         #expect(statusResponse.uptimeSeconds! > 86400) // 24時間以上
     }
@@ -45,12 +46,12 @@ struct StatusHandlerTests {
     @Test func when_uptime_calculated_then_reflects_time_difference() async throws {
         let startTime = Date(timeIntervalSinceNow: -300)
         let handler = StatusHandler(port: 8080, startTime: startTime)
-        let request = HTTPRequest(method: .GET, path: "/api/status", headers: [:], body: Data())
+        let request = HTTPRequest(method: .GET, version: .http11, path: "/api/status", query: [], headers: [:], body: Data())
 
         let response = try await handler.handleRequest(request)
 
-        #expect(response.statusCode == .ok)
-        let statusResponse = try JSONDecoder().decode(ServerStatusResponse.self, from: response.body)
+        #expect(response.statusCode == HTTPStatusCode.ok)
+        let statusResponse = try JSONDecoder().decode(ServerStatusResponse.self, from: response.body ?? Data())
         let uptime = statusResponse.uptimeSeconds!
 
         #expect(uptime > 299.0)
@@ -63,12 +64,12 @@ struct StatusHandlerTests {
 
         for port in ports {
             let handler = StatusHandler(port: port, startTime: startTime)
-            let request = HTTPRequest(method: .GET, path: "/api/status", headers: [:], body: Data())
+            let request = HTTPRequest(method: .GET, version: .http11, path: "/api/status", query: [], headers: [:], body: Data())
 
             let response = try await handler.handleRequest(request)
 
-            #expect(response.statusCode == .ok)
-            let statusResponse = try JSONDecoder().decode(ServerStatusResponse.self, from: response.body)
+            #expect(response.statusCode == HTTPStatusCode.ok)
+            let statusResponse = try JSONDecoder().decode(ServerStatusResponse.self, from: response.body ?? Data())
             #expect(statusResponse.port == port)
         }
     }
@@ -76,12 +77,12 @@ struct StatusHandlerTests {
     @Test func when_health_check_runs_then_verifies_system_status() async throws {
         let startTime = Date()
         let handler = StatusHandler(port: 8080, startTime: startTime)
-        let request = HTTPRequest(method: .GET, path: "/api/status", headers: [:], body: Data())
+        let request = HTTPRequest(method: .GET, version: .http11, path: "/api/status", query: [], headers: [:], body: Data())
 
         let response = try await handler.handleRequest(request)
 
-        #expect(response.statusCode == .ok)
-        let statusResponse = try JSONDecoder().decode(ServerStatusResponse.self, from: response.body)
+        #expect(response.statusCode == HTTPStatusCode.ok)
+        let statusResponse = try JSONDecoder().decode(ServerStatusResponse.self, from: response.body ?? Data())
         // システムが正常であれば"running"、問題があれば"degraded"
         #expect(["running", "degraded"].contains(statusResponse.status))
     }

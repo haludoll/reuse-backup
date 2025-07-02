@@ -56,6 +56,7 @@ final class HTTPServerService: HTTPServerServiceProtocol {
             return
         }
 
+        let port = self.port
         logger.info("Starting HTTP server on port \(port)")
 
         let server = serverFactory.createServer(port: port)

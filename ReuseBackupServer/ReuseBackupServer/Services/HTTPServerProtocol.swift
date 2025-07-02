@@ -25,12 +25,10 @@ protocol HTTPServerProtocol: Sendable {
 /// FlyingFoxのHTTPServerをプロトコルに適合させるラッパー
 final class FlyingFoxHTTPServerWrapper: HTTPServerProtocol {
     private let server: FlyingFox.HTTPServer
-
-    var port: UInt16 {
-        server.port
-    }
+    let port: UInt16
 
     init(port: UInt16) {
+        self.port = port
         server = FlyingFox.HTTPServer(port: port)
     }
 

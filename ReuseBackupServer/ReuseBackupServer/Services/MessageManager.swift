@@ -4,7 +4,9 @@ final class MessageManager: ObservableObject, @unchecked Sendable {
     @Published private(set) var messages: [String] = []
 
     func addMessage(_ message: String) {
-        messages.append(message)
+        Task { @MainActor in
+            messages.append(message)
+        }
     }
 
     func getMessages() -> [String] {
@@ -12,6 +14,8 @@ final class MessageManager: ObservableObject, @unchecked Sendable {
     }
 
     func clearMessages() {
-        messages.removeAll()
+        Task { @MainActor in
+            messages.removeAll()
+        }
     }
 }

@@ -30,6 +30,11 @@ final class HTTPServerService: HTTPServerServiceProtocol {
     /// メッセージ管理
     let messageManager = MessageManager()
 
+    /// ログ出力用のLogger
+    private let logger = Logger(subsystem: "com.haludoll.ReuseBackupServer", category: "HTTPServerService")
+
+    // MARK: - Initialization
+
     /// HTTPServerServiceを初期化
     ///
     /// 指定されたポートとファクトリーでサーバーを初期化します。
@@ -41,11 +46,6 @@ final class HTTPServerService: HTTPServerServiceProtocol {
         self.serverFactory = serverFactory
         logger.info("HTTPServerService initialized for port \(port)")
     }
-
-    /// ログ出力用のLogger
-    private let logger = Logger(subsystem: "com.haludoll.ReuseBackupServer", category: "HTTPServerService")
-
-    // MARK: - Initialization
 
     // MARK: - Server Control
 

@@ -1,7 +1,7 @@
 import FlyingFox
 import Foundation
 
-final class MessageHandler: HTTPHandler {
+struct MessageHandler: HTTPHandler {
     private let messageManager: MessageManager
 
     init(messageManager: MessageManager) {

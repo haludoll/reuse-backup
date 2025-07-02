@@ -6,9 +6,8 @@ import OSLog
 ///
 /// HTTPサーバーファクトリーを使用してHTTPサーバー機能を提供します。
 /// 主な機能：
-/// - `/` - サーバー基本情報
 /// - `/api/status` - サーバーステータス情報の取得
-/// - `/api/messages` - メッセージAPI（POST/GET/DELETE）
+/// - `/api/message` - メッセージ受信API（POST）
 final class HTTPServerService: HTTPServerServiceProtocol {
     // MARK: - Properties
 
@@ -70,9 +69,7 @@ final class HTTPServerService: HTTPServerServiceProtocol {
         let messageHandler = MessageHandler(messageManager: messageManager)
 
         await server.appendRoute(.init(method: .GET, path: "/api/status"), to: statusHandler)
-        await server.appendRoute(.init(method: .POST, path: "/api/messages"), to: messageHandler)
-        await server.appendRoute(.init(method: .GET, path: "/api/messages"), to: messageHandler)
-        await server.appendRoute(.init(method: .DELETE, path: "/api/messages"), to: messageHandler)
+        await server.appendRoute(.init(method: .POST, path: "/api/message"), to: messageHandler)
 
         // server.run()は永続的にawaitするため、先にインスタンスを保存
         self.server = server

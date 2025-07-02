@@ -1,0 +1,239 @@
+openapi: 3.0.3
+info:
+  title: ReuseBackup Server API
+  description: |
+    ReuseBackupServerアプリが提供するHTTP API仕様
+    
+    古いiPhoneをローカルバックアップサーバーとして利用するための基本的なAPI。
+    クライアントアプリ（新しいiPhone）からのリクエストを受信し、
+    メッセージの処理とサーバーステータス管理を行います。
+  version: 1.0.0
+  contact:
+    name: ReuseBackup Server
+    
+servers:
+  - url: http://localhost:8080
+    description: Development server
+  - url: http://{server-ip}:8080
+    description: Local network server
+    variables:
+      server-ip:
+        default: '192.168.1.100'
+        description: Server IP address in local network
+
+paths:
+  /api/message:
+    post:
+      summary: メッセージ受信
+      description: |
+        クライアントからのメッセージを受信する基本的なエンドポイント。
+        
+        **機能:**
+        - JSONメッセージの受信
+        - タイムスタンプの記録
+        - 受信確認レスポンス
+        - サーバーログへの出力
+      operationId: receiveMessage
+      tags:
+        - Messages
+      requestBody:
+        description: クライアントからのメッセージ
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageRequest'
+            examples:
+              basic_message:
+                summary: 基本的なメッセージ
+                value:
+                  message: "Hello from client"
+                  timestamp: "2025-07-01T12:00:00Z"
+              test_connection:
+                summary: 接続テスト
+                value:
+                  message: "Connection test"
+                  timestamp: "2025-07-01T12:00:00Z"
+      responses:
+        '200':
+          description: メッセージ受信成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageResponse'
+              examples:
+                success:
+                  summary: 受信成功
+                  value:
+                    status: "success"
+                    received: true
+                    serverTimestamp: "2025-07-01T12:00:01Z"
+        '400':
+          description: 無効なリクエスト
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_json:
+                  summary: 無効なJSON
+                  value:
+                    status: "error"
+                    error: "Invalid JSON format"
+                    received: false
+        '500':
+          description: サーバー内部エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                server_error:
+                  summary: サーバーエラー
+                  value:
+                    status: "error"
+                    error: "Internal server error"
+                    received: false
+
+  /api/status:
+    get:
+      summary: サーバーステータス取得
+      description: |
+        サーバーの現在のステータスと基本情報を取得する。
+        
+        **用途:**
+        - サーバーの生存確認
+        - 接続可能状態の確認
+        - サーバー情報の取得
+      operationId: getServerStatus
+      tags:
+        - Status
+      responses:
+        '200':
+          description: サーバーステータス取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerStatus'
+              examples:
+                running:
+                  summary: サーバー稼働中
+                  value:
+                    status: "running"
+                    uptime: 3600
+                    version: "1.0.0"
+                    serverTime: "2025-07-01T12:00:00Z"
+
+components:
+  schemas:
+    MessageRequest:
+      type: object
+      required:
+        - message
+        - timestamp
+      properties:
+        message:
+          type: string
+          description: クライアントからのメッセージ内容
+          example: "Hello from client"
+          minLength: 1
+          maxLength: 1000
+        timestamp:
+          type: string
+          format: date-time
+          description: メッセージ送信時刻（ISO 8601形式）
+          example: "2025-07-01T12:00:00Z"
+      example:
+        message: "Hello from client"
+        timestamp: "2025-07-01T12:00:00Z"
+
+    MessageResponse:
+      type: object
+      required:
+        - status
+        - received
+      properties:
+        status:
+          type: string
+          enum: ["success"]
+          description: 処理ステータス
+          example: "success"
+        received:
+          type: boolean
+          description: メッセージ受信確認
+          example: true
+        serverTimestamp:
+          type: string
+          format: date-time
+          description: サーバー受信時刻（ISO 8601形式）
+          example: "2025-07-01T12:00:01Z"
+      example:
+        status: "success"
+        received: true
+        serverTimestamp: "2025-07-01T12:00:01Z"
+
+    ErrorResponse:
+      type: object
+      required:
+        - status
+        - error
+        - received
+      properties:
+        status:
+          type: string
+          enum: ["error"]
+          description: エラーステータス
+          example: "error"
+        error:
+          type: string
+          description: エラーメッセージ
+          example: "Invalid JSON format"
+        received:
+          type: boolean
+          description: メッセージ受信状態
+          example: false
+      example:
+        status: "error"
+        error: "Invalid JSON format"
+        received: false
+
+    ServerStatus:
+      type: object
+      required:
+        - status
+        - uptime
+        - version
+        - serverTime
+      properties:
+        status:
+          type: string
+          enum: ["running", "starting", "stopping"]
+          description: サーバーの現在のステータス
+          example: "running"
+        uptime:
+          type: integer
+          description: サーバー稼働時間（秒）
+          example: 3600
+          minimum: 0
+        version:
+          type: string
+          description: サーバーアプリのバージョン
+          example: "1.0.0"
+        serverTime:
+          type: string
+          format: date-time
+          description: サーバーの現在時刻（ISO 8601形式）
+          example: "2025-07-01T12:00:00Z"
+      example:
+        status: "running"
+        uptime: 3600
+        version: "1.0.0"
+        serverTime: "2025-07-01T12:00:00Z"
+
+  securitySchemes: {}
+
+tags:
+  - name: Messages
+    description: メッセージ送受信機能
+  - name: Status
+    description: サーバーステータス管理

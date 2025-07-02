@@ -26,7 +26,9 @@ final class StatusHandler: HTTPHandler {
                     serverTime: Date()
                 )
 
-                let jsonData = try JSONEncoder().encode(statusResponse)
+                let encoder = JSONEncoder()
+                encoder.dateEncodingStrategy = .iso8601
+                let jsonData = try encoder.encode(statusResponse)
                 return HTTPResponse(
                     statusCode: .ok,
                     headers: [.contentType: "application/json"],
@@ -41,7 +43,9 @@ final class StatusHandler: HTTPHandler {
                     serverTime: Date()
                 )
 
-                let jsonData = try JSONEncoder().encode(statusResponse)
+                let encoder = JSONEncoder()
+                encoder.dateEncodingStrategy = .iso8601
+                let jsonData = try encoder.encode(statusResponse)
                 return HTTPResponse(
                     statusCode: .ok, // ステータス情報は返せるので200
                     headers: [.contentType: "application/json"],
@@ -56,7 +60,9 @@ final class StatusHandler: HTTPHandler {
                 received: false
             )
 
-            let jsonData = try JSONEncoder().encode(errorResponse)
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            let jsonData = try encoder.encode(errorResponse)
             return HTTPResponse(
                 statusCode: .internalServerError,
                 headers: [.contentType: "application/json"],

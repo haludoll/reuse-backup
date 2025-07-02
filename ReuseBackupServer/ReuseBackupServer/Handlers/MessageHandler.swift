@@ -31,7 +31,9 @@ struct MessageHandler: HTTPHandler {
                 serverTimestamp: Date()
             )
 
-            let jsonData = try JSONEncoder().encode(response)
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            let jsonData = try encoder.encode(response)
             return HTTPResponse(
                 statusCode: .ok,
                 headers: [.contentType: "application/json"],
@@ -44,7 +46,9 @@ struct MessageHandler: HTTPHandler {
                 received: false
             )
 
-            let jsonData = try JSONEncoder().encode(errorResponse)
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            let jsonData = try encoder.encode(errorResponse)
             return HTTPResponse(
                 statusCode: .badRequest,
                 headers: [.contentType: "application/json"],

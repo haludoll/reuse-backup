@@ -7,6 +7,10 @@ class ServerDiscoveryManager: ObservableObject {
     @Published var discoveredServers: [DiscoveredServer] = []
     @Published var isSearching = false
     @Published var manualServerAddress = ""
+    @Published var errorMessage: String?
+    @Published var showingAlert = false
+    @Published var alertTitle = ""
+    @Published var alertMessage = ""
     
     private var browser: NWBrowser?
     private let httpClient = HTTPClient()
@@ -35,13 +39,29 @@ class ServerDiscoveryManager: ObservableObject {
     }
     
     func addManualServer() {
-        guard !manualServerAddress.isEmpty else { return }
+        let trimmedAddress = manualServerAddress.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedAddress.isEmpty else {
+            showAlert("入力エラー", "サーバーアドレスを入力してください。")
+            return
+        }
+        
+        // 基本的な形式チェック
+        if !trimmedAddress.contains(":") {
+            showAlert("入力エラー", "ポート番号を含めてください。例: 192.168.1.100:8080")
+            return
+        }
         
         let endpoint: String
-        if manualServerAddress.hasPrefix("http://") || manualServerAddress.hasPrefix("https://") {
-            endpoint = manualServerAddress
+        if trimmedAddress.hasPrefix("http://") || trimmedAddress.hasPrefix("https://") {
+            endpoint = trimmedAddress
         } else {
-            endpoint = "http://\(manualServerAddress)"
+            endpoint = "http://\(trimmedAddress)"
+        }
+        
+        // URL形式の検証
+        guard URL(string: endpoint) != nil else {
+            showAlert("入力エラー", "有効なアドレス形式で入力してください。例: 192.168.1.100:8080")
+            return
         }
         
         let server = DiscoveredServer(
@@ -52,9 +72,18 @@ class ServerDiscoveryManager: ObservableObject {
         
         if !discoveredServers.contains(where: { $0.endpoint == server.endpoint }) {
             discoveredServers.append(server)
+            showAlert("追加完了", "サーバーを追加しました: \(endpoint)")
+        } else {
+            showAlert("重複エラー", "このサーバーは既に追加されています。")
         }
         
         manualServerAddress = ""
+    }
+    
+    private func showAlert(_ title: String, _ message: String) {
+        alertTitle = title
+        alertMessage = message
+        showingAlert = true
     }
     
     private func startBonjourDiscovery() {

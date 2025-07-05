@@ -9,22 +9,31 @@ struct MessageSendView: View {
         NavigationView {
             VStack(spacing: 20) {
                 // Server Status
-                Group {
-                    if viewModel.isConnected {
-                        HStack {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(.green)
-                            Text("サーバーに接続済み")
-                                .foregroundColor(.green)
-                        }
-                    } else {
-                        HStack {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.red)
-                            Text("サーバーが見つかりません")
-                                .foregroundColor(.red)
+                HStack {
+                    Image(systemName: viewModel.connectionStatus.icon)
+                        .foregroundColor(viewModel.connectionStatus.color)
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("接続ステータス: \(viewModel.connectionStatus.displayText)")
+                            .foregroundColor(viewModel.connectionStatus.color)
+                            .font(.headline)
+                        
+                        if let serverURL = viewModel.serverURL {
+                            Text("サーバー: \(serverURL.absoluteString)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
                     }
+                    
+                    Spacer()
+                    
+                    Button("再接続") {
+                        Task {
+                            await viewModel.discoverServer()
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .disabled(viewModel.connectionStatus == .connecting)
                 }
                 .padding()
                 .background(Color(.systemGray6))
@@ -32,8 +41,16 @@ struct MessageSendView: View {
                 
                 // Message Input
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("メッセージ")
-                        .font(.headline)
+                    HStack {
+                        Text("メッセージ")
+                            .font(.headline)
+                        
+                        Spacer()
+                        
+                        Text("\(messageText.count)/1000")
+                            .font(.caption)
+                            .foregroundColor(messageText.count > 1000 ? .red : .secondary)
+                    }
                     
                     TextEditor(text: $messageText)
                         .frame(minHeight: 100)
@@ -42,15 +59,23 @@ struct MessageSendView: View {
                         .cornerRadius(8)
                         .overlay(
                             RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color(.systemGray4), lineWidth: 1)
+                                .stroke(messageText.count > 1000 ? Color.red : Color(.systemGray4), lineWidth: 1)
                         )
+                    
+                    if messageText.count > 1000 {
+                        Text("⚠️ メッセージは1000文字以内で入力してください")
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
                 }
                 
                 // Send Button
                 Button(action: {
                     Task {
                         await viewModel.sendMessage(messageText)
-                        messageText = ""
+                        if viewModel.lastResponse?.received == true {
+                            messageText = ""
+                        }
                     }
                 }) {
                     HStack {
@@ -59,15 +84,15 @@ struct MessageSendView: View {
                                 .scaleEffect(0.8)
                                 .padding(.trailing, 4)
                         }
-                        Text("メッセージ送信")
+                        Text(viewModel.isSending ? "送信中..." : "メッセージ送信")
                     }
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(viewModel.isConnected && !messageText.isEmpty && !viewModel.isSending ? Color.blue : Color.gray)
+                    .background(canSendMessage ? Color.blue : Color.gray)
                     .foregroundColor(.white)
                     .cornerRadius(8)
                 }
-                .disabled(!viewModel.isConnected || messageText.isEmpty || viewModel.isSending)
+                .disabled(!canSendMessage)
                 
                 // Status Messages
                 if let lastResponse = viewModel.lastResponse {
@@ -76,7 +101,9 @@ struct MessageSendView: View {
                             .font(.headline)
                         Text("ステータス: \(lastResponse.status.rawValue)")
                         Text("受信: \(lastResponse.received ? "成功" : "失敗")")
-                        Text("サーバー時刻: \(DateFormatter.iso8601.string(from: lastResponse.serverTimestamp))")
+                        Text(
+                            "サーバー時刻: \(DateFormatter.iso8601.string(from: lastResponse.serverTimestamp!))"
+                        )
                     }
                     .padding()
                     .background(Color(.systemGray6))
@@ -101,7 +128,29 @@ struct MessageSendView: View {
             .refreshable {
                 await viewModel.discoverServer()
             }
+            .alert(viewModel.alertTitle, isPresented: $viewModel.showingSuccessAlert) {
+                Button("OK") { }
+            } message: {
+                Text(viewModel.alertMessage)
+            }
+            .alert(viewModel.alertTitle, isPresented: $viewModel.showingErrorAlert) {
+                Button("OK") { }
+                Button("再試行") {
+                    Task {
+                        await viewModel.discoverServer()
+                    }
+                }
+            } message: {
+                Text(viewModel.alertMessage)
+            }
         }
+    }
+    
+    private var canSendMessage: Bool {
+        viewModel.isConnected && 
+        !messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && 
+        messageText.count <= 1000 &&
+        !viewModel.isSending
     }
 }
 

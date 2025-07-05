@@ -69,7 +69,7 @@ struct ServerDiscoveryView: View {
                         Button("追加") {
                             discoveryManager.addManualServer()
                         }
-                        .disabled(discoveryManager.manualServerAddress.isEmpty)
+                        .disabled(discoveryManager.manualServerAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
                 }
                 .padding()
@@ -88,6 +88,11 @@ struct ServerDiscoveryView: View {
             }
             .task {
                 discoveryManager.startDiscovery()
+            }
+            .alert(discoveryManager.alertTitle, isPresented: $discoveryManager.showingAlert) {
+                Button("OK") { }
+            } message: {
+                Text(discoveryManager.alertMessage)
             }
         }
     }

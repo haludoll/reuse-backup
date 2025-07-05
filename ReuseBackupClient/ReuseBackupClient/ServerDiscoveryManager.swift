@@ -122,19 +122,88 @@ class ServerDiscoveryManager: ObservableObject {
     }
     
     private func resolveService(name: String, type: String, domain: String) {
-        // Bonjourサービスの名前解決（簡略化）
-        // 実際の実装では、NWConnectionを使用してサービスの詳細を解決します
-        // ここでは仮のエンドポイントを作成
-        let endpoint = "http://\(name).local:8080"
+        let serviceName = "\(name).\(type)\(domain)"
+        let serviceEndpoint = NWEndpoint.service(name: name, type: type, domain: domain, interface: nil)
+        
+        let parameters = NWParameters.tcp
+        parameters.includePeerToPeer = true
+        
+        let connection = NWConnection(to: serviceEndpoint, using: parameters)
+        
+        connection.stateUpdateHandler = { [weak self] state in
+            DispatchQueue.main.async {
+                switch state {
+                case .ready:
+                    // 接続が確立できた場合、エンドポイント情報を取得
+                    if let endpoint = connection.currentPath?.remoteEndpoint {
+                        self?.handleResolvedEndpoint(
+                            serviceName: name,
+                            endpoint: endpoint,
+                            connection: connection
+                        )
+                    }
+                    connection.cancel()
+                    
+                case .failed(let error):
+                    print("サービス解決失敗 (\(serviceName)): \(error)")
+                    connection.cancel()
+                    
+                case .cancelled:
+                    break
+                    
+                default:
+                    break
+                }
+            }
+        }
+        
+        connection.start(queue: .main)
+        
+        // 5秒でタイムアウト
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+            if connection.state != .cancelled {
+                connection.cancel()
+            }
+        }
+    }
+    
+    private func handleResolvedEndpoint(serviceName: String, endpoint: NWEndpoint, connection: NWConnection) {
+        var serverHost = ""
+        var serverPort = 8080
+        
+        switch endpoint {
+        case .hostPort(let host, let port):
+            switch host {
+            case .ipv4(let address):
+                serverHost = address.debugDescription
+            case .ipv6(let address):
+                serverHost = "[\(address.debugDescription)]"
+            case .name(let hostname, _):
+                serverHost = hostname
+            @unknown default:
+                serverHost = "unknown"
+            }
+            serverPort = Int(port.rawValue)
+            
+        case .service(_, _, _, _):
+            // サービス形式の場合は.localドメインを使用
+            serverHost = "\(serviceName).local"
+            
+        @unknown default:
+            serverHost = "\(serviceName).local"
+        }
+        
+        let serverEndpoint = "http://\(serverHost):\(serverPort)"
         
         let server = DiscoveredServer(
-            name: name,
-            endpoint: endpoint,
+            name: serviceName,
+            endpoint: serverEndpoint,
             type: .bonjour
         )
         
         if !discoveredServers.contains(where: { $0.endpoint == server.endpoint }) {
             discoveredServers.append(server)
+            print("Bonjourサービス解決成功: \(serverEndpoint)")
         }
     }
     

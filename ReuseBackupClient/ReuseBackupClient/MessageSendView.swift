@@ -10,12 +10,12 @@ struct MessageSendView: View {
             VStack(spacing: 20) {
                 // Server Status
                 HStack {
-                    Image(systemName: viewModel.connectionStatus.icon)
-                        .foregroundColor(viewModel.connectionStatus.color)
+                    Image(systemName: connectionStatusIcon)
+                        .foregroundColor(connectionStatusColor)
                     
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("接続ステータス: \(viewModel.connectionStatus.displayText)")
-                            .foregroundColor(viewModel.connectionStatus.color)
+                        Text("接続ステータス: \(connectionStatusText)")
+                            .foregroundColor(connectionStatusColor)
                             .font(.headline)
                         
                         if let serverURL = viewModel.serverURL {
@@ -151,6 +151,45 @@ struct MessageSendView: View {
         !messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && 
         messageText.count <= 1000 &&
         !viewModel.isSending
+    }
+    
+    private var connectionStatusText: String {
+        switch viewModel.connectionStatus {
+        case .disconnected:
+            return "未接続"
+        case .connecting:
+            return "接続中..."
+        case .connected:
+            return "接続済み"
+        case .error:
+            return "接続エラー"
+        }
+    }
+    
+    private var connectionStatusColor: Color {
+        switch viewModel.connectionStatus {
+        case .disconnected:
+            return .gray
+        case .connecting:
+            return .orange
+        case .connected:
+            return .green
+        case .error:
+            return .red
+        }
+    }
+    
+    private var connectionStatusIcon: String {
+        switch viewModel.connectionStatus {
+        case .disconnected:
+            return "circle"
+        case .connecting:
+            return "circle.dotted"
+        case .connected:
+            return "checkmark.circle.fill"
+        case .error:
+            return "xmark.circle.fill"
+        }
     }
 }
 

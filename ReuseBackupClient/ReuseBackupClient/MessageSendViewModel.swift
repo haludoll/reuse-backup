@@ -1,5 +1,4 @@
 import Foundation
-import SwiftUI
 import APISharedModels
 
 @MainActor
@@ -22,45 +21,6 @@ class MessageSendViewModel: ObservableObject {
         case connecting
         case connected
         case error
-        
-        var displayText: String {
-            switch self {
-            case .disconnected:
-                return "未接続"
-            case .connecting:
-                return "接続中..."
-            case .connected:
-                return "接続済み"
-            case .error:
-                return "接続エラー"
-            }
-        }
-        
-        var color: Color {
-            switch self {
-            case .disconnected:
-                return .gray
-            case .connecting:
-                return .orange
-            case .connected:
-                return .green
-            case .error:
-                return .red
-            }
-        }
-        
-        var icon: String {
-            switch self {
-            case .disconnected:
-                return "circle"
-            case .connecting:
-                return "circle.dotted"
-            case .connected:
-                return "checkmark.circle.fill"
-            case .error:
-                return "xmark.circle.fill"
-            }
-        }
     }
     
     func discoverServer() async {

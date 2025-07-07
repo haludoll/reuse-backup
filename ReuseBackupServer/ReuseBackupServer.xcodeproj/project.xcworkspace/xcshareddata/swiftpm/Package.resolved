@@ -4,10 +4,10 @@
     {
       "identity" : "flyingfox",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/swhitty/FlyingFox.git",
+      "location" : "https://github.com/swhitty/FlyingFox",
       "state" : {
-        "revision" : "147d130b65cab784351069a13fe4e614c331599a",
-        "version" : "0.24.0"
+        "revision" : "de429870282bed7b01bf6c384f5f29d55907aa10",
+        "version" : "0.24.1"
       }
     },
     {
@@ -62,6 +62,24 @@
       "state" : {
         "revision" : "e0ec0f5f3af6f3e4d5e7a19d2af26b481acb6ba8",
         "version" : "1.0.3"
+      }
+    },
+    {
+      "identity" : "swift-openapi-generator",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-openapi-generator",
+      "state" : {
+        "revision" : "ea291f05436363665ee67c453f4a72a895f18e75",
+        "version" : "1.9.0"
+      }
+    },
+    {
+      "identity" : "swift-openapi-runtime",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-openapi-runtime",
+      "state" : {
+        "revision" : "8f33cc5dfe81169fb167da73584b9c72c3e8bc23",
+        "version" : "1.8.2"
       }
     },
     {

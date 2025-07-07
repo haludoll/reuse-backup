@@ -36,9 +36,22 @@
 		0C9740802E14267A00DEBDBF /* TestPlan.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = TestPlan.xctestplan; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		0C6663C02E1C0DDC00D87AD0 /* Exceptions for "ReuseBackupServer" folder in "ReuseBackupServer" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 0C973F712E13DF3000DEBDBF /* ReuseBackupServer */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		0C973F742E13DF3000DEBDBF /* ReuseBackupServer */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				0C6663C02E1C0DDC00D87AD0 /* Exceptions for "ReuseBackupServer" folder in "ReuseBackupServer" target */,
+			);
 			path = ReuseBackupServer;
 			sourceTree = "<group>";
 		};
@@ -417,6 +430,9 @@
 				DEVELOPMENT_TEAM = U2W9UR892A;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ReuseBackupServer/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "このアプリが他のデバイスからバックアップサーバーとして発見・接続されるため、ローカルネットワークア\n  クセスが必要です。データは全てローカルに保存され、外部に送信されません。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -450,6 +466,9 @@
 				DEVELOPMENT_TEAM = U2W9UR892A;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ReuseBackupServer/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "このアプリが他のデバイスからバックアップサーバーとして発見・接続されるため、ローカルネットワークア\n  クセスが必要です。データは全てローカルに保存され、外部に送信されません。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

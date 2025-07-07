@@ -33,6 +33,7 @@ class ServerDiscoveryManager: ObservableObject {
     }
     
     func stopDiscovery() {
+        print("🛑 Stopping Bonjour discovery (5-second timeout reached)")
         isSearching = false
         browser?.cancel()
         browser = nil
@@ -87,30 +88,62 @@ class ServerDiscoveryManager: ObservableObject {
     }
     
     private func startBonjourDiscovery() {
+        print("🔍 Starting Bonjour discovery for _reuse-backup._tcp services")
         let parameters = NWParameters()
         parameters.includePeerToPeer = true
         
         browser = NWBrowser(for: .bonjour(type: "_reuse-backup._tcp", domain: nil), using: parameters)
         
-        browser?.stateUpdateHandler = { state in
+        browser?.stateUpdateHandler = { [weak self] state in
             DispatchQueue.main.async {
                 switch state {
                 case .ready:
-                    print("Bonjour browser ready")
+                    print("✅ Bonjour browser ready - starting discovery")
                 case .failed(let error):
-                    print("Bonjour browser failed: \(error)")
+                    print("❌ Bonjour browser failed: \(error)")
+                    switch error {
+                    if error is NWError {
+                        let nwError = error as! NWError
+                        switch nwError {
+                        case .dns(let dnsError):
+                            print("DNS Error: \(dnsError)")
+                        default:
+                            print("Network Error: \(nwError)")
+                        }
+                    } else {
+                        print("Other Error: \(error)")
+                    }
+                    }
+                    self?.errorMessage = "Bonjour検索エラー: \(error.localizedDescription)"
                 case .cancelled:
-                    print("Bonjour browser cancelled")
+                    print("🔄 Bonjour browser cancelled - This is expected when stopDiscovery() is called")
+                case .waiting(let error):
+                    print("⏳ Bonjour browser waiting: \(error)")
                 default:
-                    break
+                    print("📊 Bonjour browser state: \(state)")
                 }
             }
         }
-        
-        browser?.browseResultsChangedHandler = { results, changes in
+
+        browser?.browseResultsChangedHandler = { (results, changes) in
             DispatchQueue.main.async {
+                print("📱 Bonjour results changed. Found \(results.count) services")
+                for change in changes {
+                    switch change {
+                    case .added(let result):
+                        print("➕ Service added: \(result.endpoint)")
+                    case .removed(let result):
+                        print("➖ Service removed: \(result.endpoint)")
+                    case .changed(let old, let new):
+                        print("🔄 Service changed: \(old.endpoint) -> \(new.endpoint)")
+                    @unknown default:
+                        print("❓ Unknown change type")
+                    }
+                }
+                
                 for result in results {
                     if case .service(let name, let type, let domain, _) = result.endpoint {
+                        print("🌐 Resolving service: \(name).\(type)\(domain)")
                         // Bonjourサービスから実際のIPアドレスとポートを解決
                         self.resolveService(name: name, type: type, domain: domain)
                     }
@@ -187,6 +220,18 @@ class ServerDiscoveryManager: ObservableObject {
             
         case .service(_, _, _, _):
             // サービス形式の場合は.localドメインを使用
+            serverHost = "\(serviceName).local"
+            
+        case .unix(path: _):
+            // Unixソケットはサポートしない
+            serverHost = "\(serviceName).local"
+            
+        case .url(_):
+            // URLエンドポイントはサポートしない
+            serverHost = "\(serviceName).local"
+            
+        case .opaque(_):
+            // Opaqueエンドポイントはサポートしない
             serverHost = "\(serviceName).local"
             
         @unknown default:

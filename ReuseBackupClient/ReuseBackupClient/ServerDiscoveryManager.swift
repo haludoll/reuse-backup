@@ -101,7 +101,6 @@ class ServerDiscoveryManager: ObservableObject {
                     print("✅ Bonjour browser ready - starting discovery")
                 case .failed(let error):
                     print("❌ Bonjour browser failed: \(error)")
-                    switch error {
                     if error is NWError {
                         let nwError = error as! NWError
                         switch nwError {
@@ -113,7 +112,7 @@ class ServerDiscoveryManager: ObservableObject {
                     } else {
                         print("Other Error: \(error)")
                     }
-                    }
+
                     self?.errorMessage = "Bonjour検索エラー: \(error.localizedDescription)"
                 case .cancelled:
                     print("🔄 Bonjour browser cancelled - This is expected when stopDiscovery() is called")
@@ -124,28 +123,32 @@ class ServerDiscoveryManager: ObservableObject {
                 }
             }
         }
-
-        browser?.browseResultsChangedHandler = { (results, changes) in
+        browser?.browseResultsChangedHandler = { results, changes in
             DispatchQueue.main.async {
                 print("📱 Bonjour results changed. Found \(results.count) services")
                 for change in changes {
                     switch change {
+                    case .identical:
+                        print("🔄 Service identical")
                     case .added(let result):
                         print("➕ Service added: \(result.endpoint)")
                     case .removed(let result):
                         print("➖ Service removed: \(result.endpoint)")
-                    case .changed(let old, let new):
+                    case .changed(old: let old, new: let new, flags: let flags):
                         print("🔄 Service changed: \(old.endpoint) -> \(new.endpoint)")
                     @unknown default:
                         print("❓ Unknown change type")
                     }
                 }
                 
+                // サービス解決処理
                 for result in results {
+                    print("🔍 Processing result endpoint: \(result.endpoint)")
                     if case .service(let name, let type, let domain, _) = result.endpoint {
                         print("🌐 Resolving service: \(name).\(type)\(domain)")
-                        // Bonjourサービスから実際のIPアドレスとポートを解決
                         self.resolveService(name: name, type: type, domain: domain)
+                    } else {
+                        print("⚠️ Endpoint is not a service type: \(result.endpoint)")
                     }
                 }
             }

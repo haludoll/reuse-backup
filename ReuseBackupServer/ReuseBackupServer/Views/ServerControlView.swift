@@ -58,13 +58,13 @@ struct ServerControlView: View {
     private var buttonIcon: String {
         switch viewModel.serverStatus {
         case .stopped, .error:
-            return "play.fill"
+            "play.fill"
         case .starting:
-            return "hourglass"
+            "hourglass"
         case .running:
-            return "stop.fill"
+            "stop.fill"
         case .stopping:
-            return "hourglass"
+            "hourglass"
         }
     }
 
@@ -90,34 +90,34 @@ struct ServerControlView: View {
     private var controlButtonTitle: String {
         switch viewModel.serverStatus {
         case .stopped, .error:
-            return "サーバー開始"
+            "サーバー開始"
         case .starting:
-            return "開始中..."
+            "開始中..."
         case .running:
-            return "サーバー停止"
+            "サーバー停止"
         case .stopping:
-            return "停止中..."
+            "停止中..."
         }
     }
 
     /// サーバーコントロールボタンが無効かどうか
     private var isControlButtonDisabled: Bool {
-        return viewModel.serverStatus == .starting || viewModel.serverStatus == .stopping
+        viewModel.serverStatus == .starting || viewModel.serverStatus == .stopping
     }
 
     /// 状況に応じたヘルプテキストを返す
     private var helpText: String {
         switch viewModel.serverStatus {
         case .stopped:
-            return "サーバーを開始すると、クライアントアプリから接続できるようになります"
+            "サーバーを開始すると、クライアントアプリから接続できるようになります"
         case .starting:
-            return "サーバーを開始しています..."
+            "サーバーを開始しています..."
         case .running:
-            return "サーバーが稼働中です。クライアントアプリから接続可能です"
+            "サーバーが稼働中です。クライアントアプリから接続可能です"
         case .stopping:
-            return "サーバーを停止しています..."
+            "サーバーを停止しています..."
         case .error:
-            return "エラーが発生しました。再度開始を試してください"
+            "エラーが発生しました。再度開始を試してください"
         }
     }
 }

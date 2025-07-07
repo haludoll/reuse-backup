@@ -10,7 +10,7 @@ final class MessageManager: ObservableObject, @unchecked Sendable {
     }
 
     func getMessages() -> [String] {
-        return messages
+        messages
     }
 
     func clearMessages() {

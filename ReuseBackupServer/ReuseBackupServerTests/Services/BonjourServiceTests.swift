@@ -8,7 +8,7 @@ struct BonjourServiceTests {
     // MARK: - Initialization Tests
     
     @Test func when_bonjour_service_initialized_then_properties_are_set_correctly() async throws {
-        let port: Int32 = 8080
+        let port: UInt16 = 8080
         let bonjourService = BonjourService(port: port)
         
         // 初期状態の確認

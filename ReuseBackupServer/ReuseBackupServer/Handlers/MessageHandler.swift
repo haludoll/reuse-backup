@@ -12,9 +12,9 @@ struct MessageHandler: HTTPHandler {
     func handleRequest(_ request: HTTPRequest) async throws -> HTTPResponse {
         switch request.method {
         case .POST:
-            return try await handlePost(request)
+            try await handlePost(request)
         default:
-            return HTTPResponse(statusCode: .methodNotAllowed)
+            HTTPResponse(statusCode: .methodNotAllowed)
         }
     }
 

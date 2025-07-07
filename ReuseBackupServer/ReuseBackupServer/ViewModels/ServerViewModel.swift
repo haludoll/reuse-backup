@@ -30,7 +30,7 @@ final class ServerViewModel: ObservableObject {
 
     /// サーバーのポート番号
     var port: UInt16 {
-        return httpServerService.port
+        httpServerService.port
     }
 
     /// メッセージマネージャー

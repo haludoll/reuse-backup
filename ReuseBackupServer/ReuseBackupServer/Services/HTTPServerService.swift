@@ -62,7 +62,7 @@ final class HTTPServerService: HTTPServerServiceProtocol {
             return
         }
 
-        let port = self.port
+        let port = port
         logger.info("Starting HTTP server on port \(port)")
 
         let server = serverFactory.createServer(port: port)
@@ -79,7 +79,7 @@ final class HTTPServerService: HTTPServerServiceProtocol {
         startTime = currentStartTime
 
         // Bonjourサービスを開始
-        bonjourService = BonjourService(port: Int32(port))
+        bonjourService = BonjourService(port: port)
         bonjourService?.startAdvertising()
 
         serverTask = Task {
@@ -103,7 +103,7 @@ final class HTTPServerService: HTTPServerServiceProtocol {
     ///
     /// 実行中のHTTPサーバーを停止し、関連するタスクもキャンセルします。
     func stop() async {
-        guard let server = server else {
+        guard let server else {
             logger.warning("Server is not running")
             return
         }

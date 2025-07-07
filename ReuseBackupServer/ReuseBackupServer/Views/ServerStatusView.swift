@@ -45,13 +45,13 @@ struct ServerStatusView: View {
     private var statusColor: Color {
         switch viewModel.serverStatus {
         case .running:
-            return .green
+            .green
         case .starting, .stopping:
-            return .orange
+            .orange
         case .error:
-            return .red
+            .red
         case .stopped:
-            return .gray
+            .gray
         }
     }
 
@@ -59,15 +59,15 @@ struct ServerStatusView: View {
     private var statusDisplayText: String {
         switch viewModel.serverStatus {
         case .stopped:
-            return "停止中"
+            "停止中"
         case .starting:
-            return "開始中..."
+            "開始中..."
         case .running:
-            return "稼働中"
+            "稼働中"
         case .stopping:
-            return "停止中..."
+            "停止中..."
         case let .error(message):
-            return "エラー: \(message)"
+            "エラー: \(message)"
         }
     }
 }

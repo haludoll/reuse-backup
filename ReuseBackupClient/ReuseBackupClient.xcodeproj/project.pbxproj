@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		0C1B56082E18FA150034CF22 /* APISharedModels in Frameworks */ = {isa = PBXBuildFile; productRef = 0C1B56072E18FA150034CF22 /* APISharedModels */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		0C973FBF2E13E03000DEBDBF /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +56,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0C1B56082E18FA150034CF22 /* APISharedModels in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +117,7 @@
 			);
 			name = ReuseBackupClient;
 			packageProductDependencies = (
+				0C1B56072E18FA150034CF22 /* APISharedModels */,
 			);
 			productName = ReuseBackupClient;
 			productReference = 0C973FB12E13E02E00DEBDBF /* ReuseBackupClient.app */;
@@ -195,6 +201,9 @@
 			);
 			mainGroup = 0C973FA82E13E02E00DEBDBF;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				0C1B56062E18FA150034CF22 /* XCLocalSwiftPackageReference "../APISharedModels" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 0C973FB22E13E02E00DEBDBF /* Products */;
 			projectDirPath = "";
@@ -586,6 +595,20 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		0C1B56062E18FA150034CF22 /* XCLocalSwiftPackageReference "../APISharedModels" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../APISharedModels;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		0C1B56072E18FA150034CF22 /* APISharedModels */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = APISharedModels;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 0C973FA92E13E02E00DEBDBF /* Project object */;
 }

@@ -48,7 +48,9 @@ final class BonjourService: NSObject, ObservableObject {
 
         // TXTレコードを設定
         if let txtData = NetService.data(fromTXTRecord: txtRecord) {
-            netService?.setTXTRecord(txtData)
+            if let service = netService, !service.setTXTRecord(txtData) {
+                logger.error("Failed to set TXT record during service creation")
+            }
         }
 
         // サービスを発信
@@ -59,8 +61,8 @@ final class BonjourService: NSObject, ObservableObject {
 
     /// Bonjourサービスの発信を停止
     func stopAdvertising() {
-        guard isAdvertising else {
-            logger.warning("Bonjour service is not advertising")
+        guard netService != nil else {
+            logger.warning("Bonjour service is not running")
             return
         }
 
@@ -86,8 +88,11 @@ final class BonjourService: NSObject, ObservableObject {
         let txtRecord = createTXTRecord(status: status, capacity: capacity)
 
         if let txtData = NetService.data(fromTXTRecord: txtRecord) {
-            netService.setTXTRecord(txtData)
-            logger.info("TXT record updated with status: \(status), capacity: \(capacity)")
+            if netService.setTXTRecord(txtData) {
+                logger.info("TXT record updated with status: \(status), capacity: \(capacity)")
+            } else {
+                logger.error("Failed to update TXT record")
+            }
         } else {
             logger.error("Failed to create TXT record data")
         }

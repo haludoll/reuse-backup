@@ -19,13 +19,14 @@ final class BonjourService: ObservableObject {
     // MARK: - Initialization
 
     init(port: UInt16) {
-        self.port = NWEndpoint.Port(rawValue: port) ?? NWEndpoint.Port(8080)!
+        self.port = NWEndpoint.Port(rawValue: port) ?? NWEndpoint.Port(8080)
 
         // デバイス名を使用してサービス名を生成
         let deviceName = UIDevice.current.name
         serviceName = "ReuseBackupServer-\(deviceName)"
 
-        logger.info("BonjourService initialized with service name: \(serviceName), port: \(port)")
+        let logServiceName = serviceName
+        logger.info("BonjourService initialized with service name: \(logServiceName), port: \(port)")
     }
 
     // MARK: - Public Methods
@@ -68,8 +69,9 @@ final class BonjourService: ObservableObject {
             }
 
             // 新しい接続ハンドラーを設定
-            nwListener?.newConnectionHandler = { [weak self] connection in
-                self?.logger.info("New connection received: \(connection)")
+            nwListener?.newConnectionHandler = { [weak self] (connection: NWConnection) in
+                guard let self else { return }
+                self.logger.info("New connection received from Bonjour")
                 // 実際のHTTPサーバーは別で処理されるため、ここでは何もしない
                 connection.cancel()
             }
@@ -169,7 +171,7 @@ final class BonjourService: ObservableObject {
             lastError = nil
 
         default:
-            logger.info("Bonjour service state: \(state)")
+            logger.info("Bonjour service state changed")
         }
     }
 }

@@ -158,30 +158,39 @@ class ServerDiscoveryManager: ObservableObject {
     }
     
     private func resolveService(name: String, type: String, domain: String) {
+        print("🚀 resolveService開始: name=\(name), type=\(type), domain=\(domain)")
         let serviceName = "\(name).\(type)\(domain)"
+        print("🏷️ serviceName: \(serviceName)")
         let serviceEndpoint = NWEndpoint.service(name: name, type: type, domain: domain, interface: nil)
+        print("🎯 serviceEndpoint作成: \(serviceEndpoint)")
         
         let parameters = NWParameters.tcp
         parameters.includePeerToPeer = true
         
         let connection = NWConnection(to: serviceEndpoint, using: parameters)
+        print("🔗 NWConnection作成完了")
         
         connection.stateUpdateHandler = { [weak self] state in
             DispatchQueue.main.async {
+                print("🔄 Connection state: \(state)")
                 switch state {
                 case .ready:
+                    print("✅ Connection ready - リモートエンドポイント取得中")
                     // 接続が確立できた場合、エンドポイント情報を取得
                     if let endpoint = connection.currentPath?.remoteEndpoint {
+                        print("📍 リモートエンドポイント取得成功: \(endpoint)")
                         self?.handleResolvedEndpoint(
                             serviceName: name,
                             endpoint: endpoint,
                             connection: connection
                         )
+                    } else {
+                        print("⚠️ リモートエンドポイントが取得できませんでした")
                     }
                     connection.cancel()
                     
                 case .failed(let error):
-                    print("サービス解決失敗 (\(serviceName)): \(error)")
+                    print("❌ サービス解決失敗 (\(serviceName)): \(error)")
                     connection.cancel()
                     
                 case .cancelled:
@@ -193,11 +202,14 @@ class ServerDiscoveryManager: ObservableObject {
             }
         }
         
+        print("▶️ Connection開始")
         connection.start(queue: .main)
         
         // 5秒でタイムアウト
+        print("⏰ 5秒タイムアウト設定")
         DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
             if connection.state != .cancelled {
+                print("⏰ 5秒タイムアウト実行 - connection.cancel()")
                 connection.cancel()
             }
         }

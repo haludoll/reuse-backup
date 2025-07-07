@@ -41,6 +41,14 @@ final class ServerViewModel: ObservableObject {
         return service.messageManager
     }
 
+    /// Bonjourサービスの状態
+    var bonjourService: BonjourService? {
+        guard let service = httpServerService as? HTTPServerService else {
+            return nil
+        }
+        return service.bonjour
+    }
+
     // MARK: - Initialization
 
     /// ServerViewModelを初期化

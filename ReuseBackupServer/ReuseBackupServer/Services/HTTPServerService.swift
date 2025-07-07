@@ -32,6 +32,11 @@ final class HTTPServerService: HTTPServerServiceProtocol {
     /// Bonjourサービス発見機能
     private var bonjourService: BonjourService?
 
+    /// BonjourServiceへの読み取り専用アクセス
+    var bonjour: BonjourService? {
+        bonjourService
+    }
+
     /// ログ出力用のLogger
     private let logger = Logger(subsystem: "com.haludoll.ReuseBackupServer", category: "HTTPServerService")
 

@@ -1,3 +1,4 @@
+import dnssd
 import Foundation
 import Network
 import os.log
@@ -15,6 +16,18 @@ final class BonjourService: ObservableObject {
 
     @Published private(set) var isAdvertising = false
     @Published private(set) var lastError: Error?
+
+    /// ユーザーフレンドリーなエラーメッセージ
+    var userFriendlyErrorMessage: String? {
+        guard let error = lastError else { return nil }
+
+        switch error {
+        case NWError.dns(DNSServiceErrorType(kDNSServiceErr_NoAuth)):
+            return "ローカルネットワークへのアクセス許可が必要です。設定 > プライバシーとセキュリティ > ローカルネットワーク でこのアプリを有効にしてください。"
+        default:
+            return "ネットワークエラーが発生しました: \(error.localizedDescription)"
+        }
+    }
 
     // MARK: - Initialization
 
@@ -160,12 +173,22 @@ final class BonjourService: ObservableObject {
             lastError = nil
 
         case let .waiting(error):
-            logger.warning("Bonjour service is waiting: \(error)")
+            switch error {
+            case NWError.dns(DNSServiceErrorType(kDNSServiceErr_NoAuth)):
+                logger.warning("Bonjour service waiting: Local network permission required. Please check app permissions in Settings.")
+            default:
+                logger.warning("Bonjour service is waiting: \(error)")
+            }
             isAdvertising = false
             lastError = error
 
         case let .failed(error):
-            logger.error("Bonjour service failed: \(error)")
+            switch error {
+            case NWError.dns(DNSServiceErrorType(kDNSServiceErr_NoAuth)):
+                logger.error("Bonjour service failed: No authorization for local network access. User needs to grant permission in Settings.")
+            default:
+                logger.error("Bonjour service failed: \(error)")
+            }
             isAdvertising = false
             lastError = error
 

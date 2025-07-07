@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/sh
 
 defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintValidatation -bool YES

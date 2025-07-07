@@ -46,17 +46,19 @@ final class BonjourService: ObservableObject {
 
             // NWParametersを設定
             let parameters = NWParameters.tcp
+            parameters.includePeerToPeer = true
 
             // Bonjourサービスを設定
             let service = NWListener.Service(
                 name: serviceName,
                 type: "_reuse-backup._tcp",
+                domain: nil,
                 txtRecord: txtRecord
             )
-            parameters.includePeerToPeer = true
 
-            // NWListenerを作成
-            nwListener = try NWListener(using: parameters, on: port)
+            // 使用されていないポートを探して使用（HTTPサーバーと競合しないように）
+            let bonjourPort = NWEndpoint.Port(rawValue: 0) ?? NWEndpoint.Port(8080) // 0で自動選択
+            nwListener = try NWListener(using: parameters, on: bonjourPort)
 
             // Bonjourサービスを発信
             nwListener?.service = service
@@ -68,18 +70,16 @@ final class BonjourService: ObservableObject {
                 }
             }
 
-            // 新しい接続ハンドラーを設定
-            nwListener?.newConnectionHandler = { [weak self] (connection: NWConnection) in
-                guard let self else { return }
-                self.logger.info("New connection received from Bonjour")
-                // 実際のHTTPサーバーは別で処理されるため、ここでは何もしない
+            // 新しい接続は即座にキャンセル（HTTPサーバーが別で処理）
+            nwListener?.newConnectionHandler = { connection in
+                // 接続を即座に拒否（HTTPサーバーが別で処理）
                 connection.cancel()
             }
 
             // リスナーを開始
             nwListener?.start(queue: DispatchQueue.global(qos: .userInitiated))
 
-            logger.info("Bonjour service publish initiated")
+            logger.info("Bonjour service advertising initiated with auto-assigned port")
 
         } catch {
             logger.error("Failed to start Bonjour service: \(error)")
@@ -121,6 +121,7 @@ final class BonjourService: ObservableObject {
         let service = NWListener.Service(
             name: serviceName,
             type: "_reuse-backup._tcp",
+            domain: nil,
             txtRecord: txtRecord
         )
 
@@ -144,6 +145,9 @@ final class BonjourService: ObservableObject {
 
         // デバイス情報
         txtRecord["device"] = UIDevice.current.model
+
+        // ポート情報（クライアントが接続するため）
+        txtRecord["port"] = String(port.rawValue)
 
         return txtRecord
     }

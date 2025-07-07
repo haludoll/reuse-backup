@@ -29,6 +29,9 @@ final class HTTPServerService: HTTPServerServiceProtocol {
     /// メッセージ管理
     let messageManager = MessageManager()
 
+    /// Bonjourサービス発見機能
+    private var bonjourService: BonjourService?
+
     /// ログ出力用のLogger
     private let logger = Logger(subsystem: "com.haludoll.ReuseBackupServer", category: "HTTPServerService")
 
@@ -74,6 +77,11 @@ final class HTTPServerService: HTTPServerServiceProtocol {
         // server.run()は永続的にawaitするため、先にインスタンスを保存
         self.server = server
         startTime = currentStartTime
+
+        // Bonjourサービスを開始
+        bonjourService = BonjourService(port: Int32(port))
+        bonjourService?.startAdvertising()
+
         serverTask = Task {
             do {
                 try await server.run()
@@ -81,11 +89,14 @@ final class HTTPServerService: HTTPServerServiceProtocol {
                 self.server = nil
                 self.serverTask = nil
                 self.startTime = nil
+                // Bonjourサービスも停止
+                self.bonjourService?.stopAdvertising()
+                self.bonjourService = nil
                 logger.error("HTTP server stopped with error: \(error.localizedDescription)")
             }
         }
 
-        logger.info("HTTP server started successfully on port \(port)")
+        logger.info("HTTP server started successfully on port \(port) with Bonjour advertising")
     }
 
     /// HTTPサーバーを停止
@@ -102,11 +113,15 @@ final class HTTPServerService: HTTPServerServiceProtocol {
         serverTask?.cancel()
         await server.stop()
 
+        // Bonjourサービスも停止
+        bonjourService?.stopAdvertising()
+        bonjourService = nil
+
         self.server = nil
         serverTask = nil
         startTime = nil
 
-        logger.info("HTTP server stopped")
+        logger.info("HTTP server and Bonjour service stopped")
     }
 
     /// サーバーが実行中かどうかを返す

@@ -19,11 +19,11 @@ enum ServerStatus: Equatable {
     /// ステータスの文字列表現
     var description: String {
         switch self {
-        case .stopped: return "stopped"
-        case .starting: return "starting"
-        case .running: return "running"
-        case .stopping: return "stopping"
-        case .error: return "error"
+        case .stopped: "stopped"
+        case .starting: "starting"
+        case .running: "running"
+        case .stopping: "stopping"
+        case .error: "error"
         }
     }
 }

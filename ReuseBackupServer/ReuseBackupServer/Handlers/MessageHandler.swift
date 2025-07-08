@@ -12,9 +12,9 @@ struct MessageHandler: HTTPHandler {
     func handleRequest(_ request: HTTPRequest) async throws -> HTTPResponse {
         switch request.method {
         case .POST:
-            return try await handlePost(request)
+            try await handlePost(request)
         default:
-            return HTTPResponse(statusCode: .methodNotAllowed)
+            HTTPResponse(statusCode: .methodNotAllowed)
         }
     }
 
@@ -25,7 +25,7 @@ struct MessageHandler: HTTPHandler {
             decoder.dateDecodingStrategy = .iso8601
             let messageRequest = try decoder.decode(Components.Schemas.MessageRequest.self, from: body)
 
-            messageManager.addMessage(messageRequest.message)
+            await messageManager.addMessage(messageRequest.message)
 
             let response = Components.Schemas.MessageResponse(
                 status: .success,

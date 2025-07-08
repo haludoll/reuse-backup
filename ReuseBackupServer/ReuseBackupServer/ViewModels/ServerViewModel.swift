@@ -30,7 +30,7 @@ final class ServerViewModel: ObservableObject {
 
     /// サーバーのポート番号
     var port: UInt16 {
-        return httpServerService.port
+        httpServerService.port
     }
 
     /// メッセージマネージャー
@@ -39,6 +39,14 @@ final class ServerViewModel: ObservableObject {
             fatalError("HTTPServerService required for message functionality")
         }
         return service.messageManager
+    }
+
+    /// Bonjourサービスの状態
+    var bonjourService: BonjourService? {
+        guard let service = httpServerService as? HTTPServerService else {
+            return nil
+        }
+        return service.bonjour
     }
 
     // MARK: - Initialization

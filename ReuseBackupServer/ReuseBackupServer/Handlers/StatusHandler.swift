@@ -107,7 +107,7 @@ final class StatusHandler: HTTPHandler {
         // ネットワーク接続状態チェック（簡易）
         let reachability = SCNetworkReachabilityCreateWithName(nil, "localhost")
         var flags = SCNetworkReachabilityFlags()
-        if let reachability = reachability,
+        if let reachability,
            SCNetworkReachabilityGetFlags(reachability, &flags)
         {
             if !flags.contains(.reachable) {

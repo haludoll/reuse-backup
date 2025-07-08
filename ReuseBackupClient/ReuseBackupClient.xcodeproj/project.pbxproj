@@ -33,9 +33,22 @@
 		0C973FC82E13E03000DEBDBF /* ReuseBackupClientUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ReuseBackupClientUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		0C6663EE2E1C0F9200D87AD0 /* Exceptions for "ReuseBackupClient" folder in "ReuseBackupClient" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 0C973FB02E13E02E00DEBDBF /* ReuseBackupClient */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		0C973FB32E13E02E00DEBDBF /* ReuseBackupClient */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				0C6663EE2E1C0F9200D87AD0 /* Exceptions for "ReuseBackupClient" folder in "ReuseBackupClient" target */,
+			);
 			path = ReuseBackupClient;
 			sourceTree = "<group>";
 		};
@@ -409,6 +422,8 @@
 				DEVELOPMENT_TEAM = U2W9UR892A;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ReuseBackupClient/Info.plist;
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "このアプリがローカルネットワーク上のバックアップサーバーを発見・接続するため、ローカルネットワークアクセスが必要です。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -442,6 +457,8 @@
 				DEVELOPMENT_TEAM = U2W9UR892A;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ReuseBackupClient/Info.plist;
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "このアプリがローカルネットワーク上のバックアップサーバーを発見・接続するため、ローカルネットワークアクセスが必要です。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

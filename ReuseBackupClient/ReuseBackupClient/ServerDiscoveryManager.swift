@@ -14,6 +14,8 @@ class ServerDiscoveryManager: ObservableObject {
     
     private var browser: NWBrowser?
     private let httpClient = HTTPClient()
+    private var netServiceResolvers: [NetService] = []
+    private var netServiceTXTResolvers: [NetServiceTXTResolver] = []
     
     func startDiscovery() {
         isSearching = true
@@ -24,10 +26,10 @@ class ServerDiscoveryManager: ObservableObject {
         
         // ローカルホストも追加
         addLocalHostServer()
-        
-        // 5秒後に検索終了
+
+        // 15秒後に検索終了（NetServiceの解決時間を確保）
         Task {
-            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            try? await Task.sleep(nanoseconds: 15_000_000_000)
             stopDiscovery()
         }
     }
@@ -36,6 +38,13 @@ class ServerDiscoveryManager: ObservableObject {
         isSearching = false
         browser?.cancel()
         browser = nil
+        
+        // NetServiceResolverもクリーンアップ
+        for netService in netServiceResolvers {
+            netService.stop()
+        }
+        netServiceResolvers.removeAll()
+        netServiceTXTResolvers.removeAll()
     }
     
     func addManualServer() {
@@ -90,29 +99,45 @@ class ServerDiscoveryManager: ObservableObject {
         let parameters = NWParameters()
         parameters.includePeerToPeer = true
         
-        browser = NWBrowser(for: .bonjour(type: "_reuse-backup._tcp", domain: nil), using: parameters)
+        // TXTレコード取得のためのボンジュールブラウザ記述子を作成
+        let descriptor = NWBrowser.Descriptor.bonjour(type: "_reuse-backup._tcp", domain: nil)
+        browser = NWBrowser(for: descriptor, using: parameters)
         
-        browser?.stateUpdateHandler = { state in
+        browser?.stateUpdateHandler = { [weak self] state in
             DispatchQueue.main.async {
                 switch state {
-                case .ready:
-                    print("Bonjour browser ready")
+                case .ready,
+                     .cancelled,
+                     .waiting:
+                    break
                 case .failed(let error):
-                    print("Bonjour browser failed: \(error)")
-                case .cancelled:
-                    print("Bonjour browser cancelled")
+                    self?.errorMessage = "Bonjour検索エラー: \(error.localizedDescription)"
                 default:
                     break
                 }
             }
         }
-        
         browser?.browseResultsChangedHandler = { results, changes in
             DispatchQueue.main.async {
+                // サービス解決処理
                 for result in results {
                     if case .service(let name, let type, let domain, _) = result.endpoint {
-                        // Bonjourサービスから実際のIPアドレスとポートを解決
-                        self.resolveService(name: name, type: type, domain: domain)
+                        // NWBrowser.Resultのメタデータから情報を取得
+                        let metadata = result.metadata
+                        
+                        var txtRecord: NWTXTRecord? = nil
+                        switch metadata {
+                        case .bonjour(let bonjourMetadata):
+                            txtRecord = bonjourMetadata
+                        case .none:
+                            // メタデータが取得できない場合はサービス解決を実行
+                            self.resolveServiceForTXTRecord(name: name, type: type, domain: domain)
+                            continue
+                        @unknown default:
+                            break
+                        }
+                        
+                        self.addDiscoveredServer(name: name, type: type, domain: domain, txtRecord: txtRecord, ipAddress: nil)
                     }
                 }
             }
@@ -121,89 +146,98 @@ class ServerDiscoveryManager: ObservableObject {
         browser?.start(queue: .main)
     }
     
-    private func resolveService(name: String, type: String, domain: String) {
-        let serviceName = "\(name).\(type)\(domain)"
-        let serviceEndpoint = NWEndpoint.service(name: name, type: type, domain: domain, interface: nil)
+    private func addDiscoveredServer(name: String, type: String, domain: String, txtRecord: NWTXTRecord?, ipAddress: String? = nil) {
+        // TXTレコードからHTTPポート情報を取得
+        var httpPort = 8080 // デフォルト値
         
-        let parameters = NWParameters.tcp
-        parameters.includePeerToPeer = true
-        
-        let connection = NWConnection(to: serviceEndpoint, using: parameters)
-        
-        connection.stateUpdateHandler = { [weak self] state in
-            DispatchQueue.main.async {
-                switch state {
-                case .ready:
-                    // 接続が確立できた場合、エンドポイント情報を取得
-                    if let endpoint = connection.currentPath?.remoteEndpoint {
-                        self?.handleResolvedEndpoint(
-                            serviceName: name,
-                            endpoint: endpoint,
-                            connection: connection
-                        )
+        // TXTレコードからポート情報を取得
+        if let txtRecord = txtRecord {
+            for (key, value) in txtRecord {
+                if key == "port" {
+                    switch value {
+                    case .data(let data):
+                        if let portString = String(data: data, encoding: .utf8), let port = Int(portString) {
+                            httpPort = port
+                        }
+                    case .string(let portString):
+                        if let port = Int(portString) {
+                            httpPort = port
+                        }
+                    case .none,
+                         .empty:
+                        break
+                    @unknown default:
+                        fatalError()
                     }
-                    connection.cancel()
-                    
-                case .failed(let error):
-                    print("サービス解決失敗 (\(serviceName)): \(error)")
-                    connection.cancel()
-                    
-                case .cancelled:
-                    break
-                    
-                default:
-                    break
                 }
             }
         }
         
-        connection.start(queue: .main)
-        
-        // 5秒でタイムアウト
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
-            if connection.state != .cancelled {
-                connection.cancel()
+        // IPアドレスが取得できている場合は、フォールバック用として追加
+        if let ipAddress = ipAddress {
+            let ipEndpoint = "http://\(ipAddress):\(httpPort)"
+            
+            let ipServer = DiscoveredServer(
+                name: name,
+                endpoint: ipEndpoint,
+                type: .bonjour
+            )
+            
+            if !discoveredServers.contains(where: { $0.endpoint == ipServer.endpoint }) {
+                discoveredServers.append(ipServer)
             }
         }
     }
     
-    private func handleResolvedEndpoint(serviceName: String, endpoint: NWEndpoint, connection: NWConnection) {
-        var serverHost = ""
-        var serverPort = 8080
+    private func resolveServiceForTXTRecord(name: String, type: String, domain: String) {
+        // NetServiceを使ってTXTレコードを解決
+        // domainが空の場合はローカルドメインを明示的に指定
+        let resolvedDomain = domain.isEmpty ? "local." : domain
+        let netService = NetService(domain: resolvedDomain, type: type, name: name)
+        netServiceResolvers.append(netService)
         
-        switch endpoint {
-        case .hostPort(let host, let port):
-            switch host {
-            case .ipv4(let address):
-                serverHost = address.debugDescription
-            case .ipv6(let address):
-                serverHost = "[\(address.debugDescription)]"
-            case .name(let hostname, _):
-                serverHost = hostname
-            @unknown default:
-                serverHost = "unknown"
+        // NetServiceDelegateを設定して解決結果を処理
+        let resolver = NetServiceTXTResolver(
+            serviceName: name,
+            serviceType: type,
+            serviceDomain: domain,
+            onResolved: { [weak self] txtRecord, ipAddress in
+                DispatchQueue.main.async {
+                    self?.addDiscoveredServer(name: name, type: type, domain: domain, txtRecord: txtRecord, ipAddress: ipAddress)
+                    self?.cleanupNetServiceResolver(netService)
+                }
+            },
+            onFailed: { [weak self] error in
+                DispatchQueue.main.async {
+                    self?.addDiscoveredServer(name: name, type: type, domain: domain, txtRecord: nil, ipAddress: nil)
+                    self?.cleanupNetServiceResolver(netService)
+                }
             }
-            serverPort = Int(port.rawValue)
-            
-        case .service(_, _, _, _):
-            // サービス形式の場合は.localドメインを使用
-            serverHost = "\(serviceName).local"
-            
-        @unknown default:
-            serverHost = "\(serviceName).local"
-        }
-        
-        let serverEndpoint = "http://\(serverHost):\(serverPort)"
-        
-        let server = DiscoveredServer(
-            name: serviceName,
-            endpoint: serverEndpoint,
-            type: .bonjour
         )
         
-        if !discoveredServers.contains(where: { $0.endpoint == server.endpoint }) {
-            discoveredServers.append(server)
-            print("Bonjourサービス解決成功: \(serverEndpoint)")
+        // resolverインスタンスを保持（delegate参照を維持するため）
+        netServiceTXTResolvers.append(resolver)
+        
+        // 解決を開始
+        netService.delegate = resolver
+        netService.resolve(withTimeout: 5.0)
+        
+        // 7秒でタイムアウト（Discovery全体のタイムアウトより前に実行）
+        DispatchQueue.main.asyncAfter(deadline: .now() + 7.0) {
+            if self.netServiceResolvers.contains(where: { $0 === netService }) {
+                self.addDiscoveredServer(name: name, type: type, domain: domain, txtRecord: nil, ipAddress: nil)
+                self.cleanupNetServiceResolver(netService)
+            }
+        }
+    }
+    
+    private func cleanupNetServiceResolver(_ netService: NetService) {
+        netService.stop()
+        netServiceResolvers.removeAll { $0 === netService }
+        
+        // 対応するresolverも削除
+        if let serviceName = netService.name.isEmpty ? nil : netService.name {
+            netServiceTXTResolvers.removeAll { $0.serviceName == serviceName }
         }
     }
     
@@ -218,6 +252,90 @@ class ServerDiscoveryManager: ObservableObject {
     }
 }
 
+class NetServiceTXTResolver: NSObject, NetServiceDelegate {
+    let serviceName: String  // publicアクセスに変更
+    private let serviceType: String
+    private let serviceDomain: String
+    private let onResolved: (NWTXTRecord?, String?) -> Void
+    private let onFailed: (Error) -> Void
+    
+    init(serviceName: String, serviceType: String, serviceDomain: String, 
+         onResolved: @escaping (NWTXTRecord?, String?) -> Void, 
+         onFailed: @escaping (Error) -> Void) {
+        self.serviceName = serviceName
+        self.serviceType = serviceType
+        self.serviceDomain = serviceDomain
+        self.onResolved = onResolved
+        self.onFailed = onFailed
+        super.init()
+    }
+    
+    func netServiceDidResolveAddress(_ sender: NetService) {
+        
+        // 最初のIPアドレスを取得
+        var ipAddress: String? = nil
+        if let addresses = sender.addresses, !addresses.isEmpty {
+            let addressData = addresses[0]
+            var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+            let result = getnameinfo(
+                addressData.withUnsafeBytes { $0.bindMemory(to: sockaddr.self).baseAddress },
+                socklen_t(addressData.count),
+                &hostname,
+                socklen_t(hostname.count),
+                nil,
+                0,
+                NI_NUMERICHOST
+            )
+            
+            if result == 0 {
+                ipAddress = String(cString: hostname)
+            }
+        }
+        
+        // TXTレコードデータを取得
+        if let txtData = sender.txtRecordData() {
+            // NSDataからNWTXTRecordに変換
+            let txtRecord = convertToNWTXTRecord(from: txtData)
+            onResolved(txtRecord, ipAddress)
+        } else {
+            onResolved(nil, ipAddress)
+        }
+    }
+    
+    func netService(_ sender: NetService, didNotResolve errorDict: [String : NSNumber]) {
+        let error = NSError(domain: "NetServiceError", code: -1, userInfo: errorDict as [String: Any])
+        onFailed(error)
+    }
+    
+    func netServiceWillResolve(_ sender: NetService) {
+        // NetService解決開始
+    }
+    
+    func netServiceDidStop(_ sender: NetService) {
+        // NetService停止
+    }
+    
+    private func convertToNWTXTRecord(from data: Data) -> NWTXTRecord? {
+        // NetService.dictionary(fromTXTRecord:)を使ってTXTレコードを解析
+        let txtDict = NetService.dictionary(fromTXTRecord: data)
+        
+        var nwTxtRecord = NWTXTRecord()
+        for (key, value) in txtDict {
+            if let keyString = key as String?, let dataValue = value as Data? {
+                if let stringValue = String(data: dataValue, encoding: .utf8) {
+                    nwTxtRecord[keyString] = stringValue
+                } else {
+                    // バイナリデータの場合は可能な範囲で文字列化して設定
+                    let binaryString = dataValue.map { String(format: "%02x", $0) }.joined()
+                    nwTxtRecord[keyString] = binaryString
+                }
+            }
+        }
+        
+        return nwTxtRecord.isEmpty ? nil : nwTxtRecord
+    }
+}
+
 struct DiscoveredServer {
     let name: String
     let endpoint: String
@@ -227,35 +345,5 @@ struct DiscoveredServer {
         case bonjour
         case localhost
         case manual
-    }
-}
-
-@MainActor
-class ServerStatusChecker: ObservableObject {
-    @Published var isOnline = false
-    @Published var isChecking = false
-    @Published var serverStatus: Components.Schemas.ServerStatus?
-    
-    private let httpClient = HTTPClient()
-    
-    func checkStatus(endpoint: String) async {
-        guard let url = URL(string: endpoint) else {
-            isOnline = false
-            return
-        }
-        
-        isChecking = true
-        
-        do {
-            let status = try await httpClient.checkServerStatus(baseURL: url)
-            serverStatus = status
-            isOnline = true
-        } catch {
-            serverStatus = nil
-            isOnline = false
-            print("サーバーステータス確認エラー (\(endpoint)): \(error)")
-        }
-        
-        isChecking = false
     }
 }

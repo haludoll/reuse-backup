@@ -1,21 +1,20 @@
 import Foundation
 
-final class MessageManager: ObservableObject, @unchecked Sendable {
+@MainActor
+final class MessageManager: ObservableObject {
     @Published private(set) var messages: [String] = []
 
     func addMessage(_ message: String) {
-        Task { @MainActor in
-            messages.append(message)
-        }
+        messages.append(message)
+        print("メッセージ追加: \(message). 総メッセージ数: \(messages.count)")
     }
 
     func getMessages() -> [String] {
-        return messages
+        messages
     }
 
     func clearMessages() {
-        Task { @MainActor in
-            messages.removeAll()
-        }
+        messages.removeAll()
+        print("メッセージクリア完了")
     }
 }

@@ -27,7 +27,25 @@ final class HTTPServerService: HTTPServerServiceProtocol {
     private var startTime: Date?
 
     /// メッセージ管理
-    let messageManager = MessageManager()
+    private var _messageManager: MessageManager?
+    var messageManager: MessageManager {
+        if let manager = _messageManager {
+            return manager
+        }
+        let manager = MainActor.assumeIsolated {
+            MessageManager()
+        }
+        _messageManager = manager
+        return manager
+    }
+
+    /// Bonjourサービス発見機能
+    private var bonjourService: BonjourService?
+
+    /// BonjourServiceへの読み取り専用アクセス
+    var bonjour: BonjourService? {
+        bonjourService
+    }
 
     /// ログ出力用のLogger
     private let logger = Logger(subsystem: "com.haludoll.ReuseBackupServer", category: "HTTPServerService")
@@ -59,7 +77,7 @@ final class HTTPServerService: HTTPServerServiceProtocol {
             return
         }
 
-        let port = self.port
+        let port = port
         logger.info("Starting HTTP server on port \(port)")
 
         let server = serverFactory.createServer(port: port)
@@ -74,6 +92,11 @@ final class HTTPServerService: HTTPServerServiceProtocol {
         // server.run()は永続的にawaitするため、先にインスタンスを保存
         self.server = server
         startTime = currentStartTime
+
+        // Bonjourサービスを開始
+        bonjourService = BonjourService(port: port)
+        bonjourService?.startAdvertising()
+
         serverTask = Task {
             do {
                 try await server.run()
@@ -81,18 +104,21 @@ final class HTTPServerService: HTTPServerServiceProtocol {
                 self.server = nil
                 self.serverTask = nil
                 self.startTime = nil
+                // Bonjourサービスも停止
+                self.bonjourService?.stopAdvertising()
+                self.bonjourService = nil
                 logger.error("HTTP server stopped with error: \(error.localizedDescription)")
             }
         }
 
-        logger.info("HTTP server started successfully on port \(port)")
+        logger.info("HTTP server started successfully on port \(port) with Bonjour advertising")
     }
 
     /// HTTPサーバーを停止
     ///
     /// 実行中のHTTPサーバーを停止し、関連するタスクもキャンセルします。
     func stop() async {
-        guard let server = server else {
+        guard let server else {
             logger.warning("Server is not running")
             return
         }
@@ -102,11 +128,15 @@ final class HTTPServerService: HTTPServerServiceProtocol {
         serverTask?.cancel()
         await server.stop()
 
+        // Bonjourサービスも停止
+        bonjourService?.stopAdvertising()
+        bonjourService = nil
+
         self.server = nil
         serverTask = nil
         startTime = nil
 
-        logger.info("HTTP server stopped")
+        logger.info("HTTP server and Bonjour service stopped")
     }
 
     /// サーバーが実行中かどうかを返す

@@ -15,6 +15,7 @@ class MessageSendViewModel: ObservableObject {
     @Published var alertMessage = ""
     
     private let httpClient = HTTPClient()
+    private let serverDiscoveryManager = ServerDiscoveryManager()
     
     enum ConnectionStatus {
         case disconnected
@@ -27,22 +28,46 @@ class MessageSendViewModel: ObservableObject {
         connectionStatus = .connecting
         errorMessage = nil
         
-        // まずローカルホストでテスト
-        let testURL = URL(string: "http://localhost:8080")!
+        // Bonjourサービス検索を開始
+        serverDiscoveryManager.startDiscovery()
         
-        do {
-            let statusResponse = try await httpClient.checkServerStatus(baseURL: testURL)
-            serverURL = testURL
-            isConnected = true
-            connectionStatus = .connected
-            print("サーバーが見つかりました: \(testURL)")
-        } catch {
+        // 検索完了まで待機
+        try? await Task.sleep(nanoseconds: 16_000_000_000) // 16秒待機
+        
+        // 発見されたサーバーを確認
+        let discoveredServers = serverDiscoveryManager.discoveredServers
+        
+        if discoveredServers.isEmpty {
             isConnected = false
             serverURL = nil
             connectionStatus = .error
-            errorMessage = getDetailedErrorMessage(error)
-            print("サーバー検出エラー: \(error)")
+            errorMessage = "利用可能なサーバーが見つかりませんでした。サーバーが起動していることを確認してください。"
+            return
         }
+        
+        // 最初に見つかった利用可能なサーバーを使用
+        for server in discoveredServers {
+            guard let url = URL(string: server.endpoint) else { continue }
+            
+            do {
+                // サーバーの状態をチェック
+                let statusResponse = try await httpClient.checkServerStatus(baseURL: url)
+                serverURL = url
+                isConnected = true
+                connectionStatus = .connected
+                print("サーバーが見つかりました: \(url)")
+                return
+            } catch {
+                print("サーバー \(server.endpoint) への接続失敗: \(error)")
+                continue
+            }
+        }
+        
+        // すべてのサーバーで接続に失敗
+        isConnected = false
+        serverURL = nil
+        connectionStatus = .error
+        errorMessage = "発見されたサーバーに接続できませんでした。"
     }
     
     func sendMessage(_ message: String) async {

@@ -158,6 +158,62 @@ swift test --package-path APISharedModels/
 - **マージコミット**: マージ時のコミットメッセージにIssue番号を含める
 - **ステータス更新**: Issue作業開始時にAssigneeを設定し、進捗を可視化
 
+## Git Worktree運用
+
+本プロジェクトでは、**Issue作業時に必ずGit Worktreeを使用**します。これにより、複数のIssueを同時に作業可能にし、作業環境を分離して効率的な開発を実現します。
+
+### Git Worktree使用原則
+
+- **必須使用**: Claude Codeを含む全ての開発者は、Issue作業時に必ずgit worktreeを作成して作業する
+- **作業分離**: 各Issueは独立したworktreeで作業し、mainブランチに影響を与えない
+- **環境独立**: 各worktreeは独立したファイルシステム上に配置され、同時並行作業が可能
+- **整理整頓**: 作業完了後は不要なworktreeを削除し、環境を整理する
+
+### Git Worktree作業フロー
+
+1. **Worktree作成**: Issue作業開始時に`./claude-parallel.sh new <issue番号> [<説明>]`を実行
+2. **作業実行**: 作成されたworktreeディレクトリで開発作業を実行
+3. **コミット・プッシュ**: 通常のgit操作でコミット・プッシュを実行
+4. **PR作成**: 作業完了後、Pull Requestを作成
+5. **Worktree削除**: PR完了後、`./worktree-manager.sh delete <branch名>`で削除
+
+### 使用可能なWorktreeスクリプト
+
+#### worktree-manager.sh
+```bash
+# 新規worktreeの作成
+./worktree-manager.sh create <branch名> [<path>]
+
+# 既存worktreeの一覧表示
+./worktree-manager.sh list
+
+# worktreeの状態確認
+./worktree-manager.sh status
+
+# worktreeの削除
+./worktree-manager.sh delete <branch名>
+```
+
+#### claude-parallel.sh
+```bash
+# Issue番号ベースでworktreeを作成（推奨）
+./claude-parallel.sh new <issue番号> [<説明>]
+```
+
+### Claude Code専用の運用ルール
+
+- **自動Worktree作成**: Claude CodeはIssue作業開始時に自動的にworktreeを作成
+- **命名規則**: `issue-{番号}-{説明}`形式のブランチ名を使用
+- **作業ディレクトリ**: `../worktrees/issue-{番号}-{説明}/`ディレクトリで作業実行
+- **自動削除**: 作業完了時に不要なworktreeを自動的に削除
+
+### メリット
+
+- **並行作業**: 複数のIssueを同時に作業可能
+- **環境分離**: 各作業が独立し、相互影響を防止
+- **高速切り替え**: ブランチ切り替えが不要で、ディレクトリ移動のみ
+- **安全性**: mainブランチを直接変更するリスクを排除
+
 ## テスト駆動開発(TDD)
 
 本プロジェクトでは**テスト駆動開発(Test-Driven Development)**を採用し、高品質で保守性の高いコードを実現します。

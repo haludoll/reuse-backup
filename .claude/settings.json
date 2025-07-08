@@ -1,6 +1,0 @@
-{
-  "allowedTools": [
-    "Bash(git worktree:*)",
-    "Bash(chmod:*)"
-  ]
-}

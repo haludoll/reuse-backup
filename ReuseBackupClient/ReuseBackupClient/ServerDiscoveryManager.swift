@@ -25,7 +25,7 @@ class ServerDiscoveryManager: ObservableObject {
         startBonjourDiscovery()
         
         // ローカルホストも追加
-        //addLocalHostServer()
+        addLocalHostServer()
 
         // 15秒後に検索終了（NetServiceの解決時間を確保）
         Task {
@@ -106,14 +106,12 @@ class ServerDiscoveryManager: ObservableObject {
         browser?.stateUpdateHandler = { [weak self] state in
             DispatchQueue.main.async {
                 switch state {
-                case .ready:
+                case .ready,
+                     .cancelled,
+                     .waiting:
                     break
                 case .failed(let error):
                     self?.errorMessage = "Bonjour検索エラー: \(error.localizedDescription)"
-                case .cancelled:
-                    break
-                case .waiting(_):
-                    break
                 default:
                     break
                 }
@@ -175,26 +173,12 @@ class ServerDiscoveryManager: ObservableObject {
             }
         }
         
-        // まずmDNSホスト名で接続を試行（標準的なアプローチ）
-        let mDNSHost = "\(name).local"
-        let mDNSEndpoint = "http://\(mDNSHost):\(httpPort)"
-        
-        let server = DiscoveredServer(
-            name: name,
-            endpoint: mDNSEndpoint,
-            type: .bonjour
-        )
-        
-        if !discoveredServers.contains(where: { $0.endpoint == server.endpoint }) {
-            discoveredServers.append(server)
-        }
-        
         // IPアドレスが取得できている場合は、フォールバック用として追加
         if let ipAddress = ipAddress {
             let ipEndpoint = "http://\(ipAddress):\(httpPort)"
             
             let ipServer = DiscoveredServer(
-                name: "\(name) (IP直接)",
+                name: name,
                 endpoint: ipEndpoint,
                 type: .bonjour
             )
@@ -254,102 +238,6 @@ class ServerDiscoveryManager: ObservableObject {
         // 対応するresolverも削除
         if let serviceName = netService.name.isEmpty ? nil : netService.name {
             netServiceTXTResolvers.removeAll { $0.serviceName == serviceName }
-        }
-    }
-    
-    private func resolveService(name: String, type: String, domain: String) {
-        let serviceName = "\(name).\(type)\(domain)"
-        let serviceEndpoint = NWEndpoint.service(name: name, type: type, domain: domain, interface: nil)
-        
-        let parameters = NWParameters.tcp
-        parameters.includePeerToPeer = true
-        
-        let connection = NWConnection(to: serviceEndpoint, using: parameters)
-        
-        connection.stateUpdateHandler = { [weak self] state in
-            DispatchQueue.main.async {
-                switch state {
-                case .ready:
-                    // 接続が確立できた場合、エンドポイント情報を取得
-                    if let endpoint = connection.currentPath?.remoteEndpoint {
-                        self?.handleResolvedEndpoint(
-                            serviceName: name,
-                            endpoint: endpoint,
-                            connection: connection
-                        )
-                    }
-                    connection.cancel()
-                    
-                case .failed(_):
-                    connection.cancel()
-                    
-                case .cancelled:
-                    break
-                    
-                default:
-                    break
-                }
-            }
-        }
-        
-        connection.start(queue: .main)
-        
-        // 5秒でタイムアウト
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
-            if connection.state != .cancelled {
-                connection.cancel()
-            }
-        }
-    }
-    
-    private func handleResolvedEndpoint(serviceName: String, endpoint: NWEndpoint, connection: NWConnection) {
-        var serverHost = ""
-        var serverPort = 8080
-        
-        switch endpoint {
-        case .hostPort(let host, let port):
-            switch host {
-            case .ipv4(let address):
-                serverHost = address.debugDescription
-            case .ipv6(let address):
-                serverHost = "[\(address.debugDescription)]"
-            case .name(let hostname, _):
-                serverHost = hostname
-            @unknown default:
-                serverHost = "unknown"
-            }
-            serverPort = Int(port.rawValue)
-            
-        case .service(_, _, _, _):
-            // サービス形式の場合は.localドメインを使用
-            serverHost = "\(serviceName).local"
-            
-        case .unix(path: _):
-            // Unixソケットはサポートしない
-            serverHost = "\(serviceName).local"
-            
-        case .url(_):
-            // URLエンドポイントはサポートしない
-            serverHost = "\(serviceName).local"
-            
-        case .opaque(_):
-            // Opaqueエンドポイントはサポートしない
-            serverHost = "\(serviceName).local"
-            
-        @unknown default:
-            serverHost = "\(serviceName).local"
-        }
-        
-        let serverEndpoint = "http://\(serverHost):\(serverPort)"
-        
-        let server = DiscoveredServer(
-            name: serviceName,
-            endpoint: serverEndpoint,
-            type: .bonjour
-        )
-        
-        if !discoveredServers.contains(where: { $0.endpoint == server.endpoint }) {
-            discoveredServers.append(server)
         }
     }
     
@@ -457,34 +345,5 @@ struct DiscoveredServer {
         case bonjour
         case localhost
         case manual
-    }
-}
-
-@MainActor
-class ServerStatusChecker: ObservableObject {
-    @Published var isOnline = false
-    @Published var isChecking = false
-    @Published var serverStatus: Components.Schemas.ServerStatus?
-    
-    private let httpClient = HTTPClient()
-    
-    func checkStatus(endpoint: String) async {
-        guard let url = URL(string: endpoint) else {
-            isOnline = false
-            return
-        }
-        
-        isChecking = true
-        
-        do {
-            let status = try await httpClient.checkServerStatus(baseURL: url)
-            serverStatus = status
-            isOnline = true
-        } catch {
-            serverStatus = nil
-            isOnline = false
-        }
-        
-        isChecking = false
     }
 }

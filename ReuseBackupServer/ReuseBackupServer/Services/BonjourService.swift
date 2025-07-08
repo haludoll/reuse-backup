@@ -31,16 +31,16 @@ final class BonjourService: NSObject, ObservableObject {
     // MARK: - Initialization
 
     override init() {
-        self.port = 8080
-        
+        port = 8080
+
         // デバイス名を使用してサービス名を生成
         let deviceName = UIDevice.current.name
         serviceName = "ReuseBackupServer-\(deviceName)"
-        
+
         super.init()
         logger.info("BonjourService initialized with service name: \(self.serviceName), port: \(self.port)")
     }
-    
+
     init(port: UInt16) {
         self.port = port
 
@@ -68,7 +68,7 @@ final class BonjourService: NSObject, ObservableObject {
 
         // NetServiceを作成
         netService = NetService(domain: "", type: "_reuse-backup._tcp", name: serviceName, port: Int32(port))
-        
+
         guard let service = netService else {
             logger.error("Failed to create NetService")
             DispatchQueue.main.async {
@@ -82,7 +82,7 @@ final class BonjourService: NSObject, ObservableObject {
 
         // デリゲートを設定
         service.delegate = self
-        
+
         // サービスの発信を開始
         service.publish()
     }
@@ -138,35 +138,33 @@ final class BonjourService: NSObject, ObservableObject {
         // ポート情報（クライアントが接続するため）
         let portString = String(port)
         txtDict["port"] = portString.data(using: .utf8)
-        
 
         return NetService.data(fromTXTRecord: txtDict)
     }
-
 }
 
 // MARK: - NetServiceDelegate
 
 extension BonjourService: NetServiceDelegate {
-    func netServiceDidPublish(_ sender: NetService) {
+    func netServiceDidPublish(_: NetService) {
         logger.info("Bonjour service published successfully")
         DispatchQueue.main.async {
             self.isAdvertising = true
             self.lastError = nil
         }
     }
-    
-    func netService(_ sender: NetService, didNotPublish errorDict: [String : NSNumber]) {
+
+    func netService(_: NetService, didNotPublish errorDict: [String: NSNumber]) {
         logger.error("Bonjour service failed to publish: \(errorDict)")
-        
+
         let error = NSError(domain: "BonjourService", code: -1, userInfo: errorDict as [String: Any])
         DispatchQueue.main.async {
             self.isAdvertising = false
             self.lastError = error
         }
     }
-    
-    func netServiceDidStop(_ sender: NetService) {
+
+    func netServiceDidStop(_: NetService) {
         logger.info("Bonjour service stopped")
         DispatchQueue.main.async {
             self.isAdvertising = false

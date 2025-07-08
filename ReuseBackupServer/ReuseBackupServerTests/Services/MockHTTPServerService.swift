@@ -56,9 +56,9 @@ class MockHTTPServerService: HTTPServerServiceProtocol {
         var errorDescription: String? {
             switch self {
             case .startFailed:
-                return "Mock server start failed"
+                "Mock server start failed"
             case .stopFailed:
-                return "Mock server stop failed"
+                "Mock server stop failed"
             }
         }
     }

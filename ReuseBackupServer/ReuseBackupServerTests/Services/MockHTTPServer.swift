@@ -106,9 +106,9 @@ extension MockHTTPServer {
         var errorDescription: String? {
             switch self {
             case .runFailed:
-                return "Mock server run failed"
+                "Mock server run failed"
             case .routeNotFound:
-                return "Route not found in mock server"
+                "Route not found in mock server"
             }
         }
     }

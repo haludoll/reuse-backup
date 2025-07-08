@@ -69,9 +69,7 @@ final class BonjourService: ObservableObject {
                 txtRecord: txtRecord
             )
 
-            // 使用されていないポートを探して使用（HTTPサーバーと競合しないように）
-            let bonjourPort = NWEndpoint.Port(rawValue: 0) ?? NWEndpoint.Port(8080) // 0で自動選択
-            nwListener = try NWListener(using: parameters, on: bonjourPort)
+            nwListener = try NWListener(using: parameters)
 
             // Bonjourサービスを発信
             nwListener?.service = service

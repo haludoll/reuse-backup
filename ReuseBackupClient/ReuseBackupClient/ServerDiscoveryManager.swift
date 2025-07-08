@@ -123,7 +123,9 @@ class ServerDiscoveryManager: ObservableObject {
                 }
             }
         }
-        browser?.browseResultsChangedHandler = { results, changes in
+        browser?.browseResultsChangedHandler = {
+ results,
+ changes in
             DispatchQueue.main.async {
                 print("📱 Bonjour results changed. Found \(results.count) services")
                 for change in changes {
@@ -134,7 +136,7 @@ class ServerDiscoveryManager: ObservableObject {
                         print("➕ Service added: \(result.endpoint)")
                     case .removed(let result):
                         print("➖ Service removed: \(result.endpoint)")
-                    case .changed(old: let old, new: let new, flags: let flags):
+                    case .changed(old: let old, new: let new, _):
                         print("🔄 Service changed: \(old.endpoint) -> \(new.endpoint)")
                     @unknown default:
                         print("❓ Unknown change type")
@@ -146,7 +148,12 @@ class ServerDiscoveryManager: ObservableObject {
                     print("🔍 Processing result endpoint: \(result.endpoint)")
                     if case .service(let name, let type, let domain, _) = result.endpoint {
                         print("🌐 Resolving service: \(name).\(type)\(domain)")
-                        self.resolveService(name: name, type: type, domain: domain)
+                        self.addDiscoveredServer(
+                            name: name,
+                            type: type,
+                            domain: domain,
+                            txtRecord: nil
+                        )
                     } else {
                         print("⚠️ Endpoint is not a service type: \(result.endpoint)")
                     }
@@ -155,6 +162,53 @@ class ServerDiscoveryManager: ObservableObject {
         }
         
         browser?.start(queue: .main)
+    }
+    
+    private func addDiscoveredServer(name: String, type: String, domain: String, txtRecord: NWTXTRecord?) {
+        print("🏗️ addDiscoveredServer開始: name=\(name)")
+        
+        // TXTレコードからHTTPポート情報を取得
+        var httpPort = 8080 // デフォルト値
+        if let txtRecord = txtRecord {
+            print("📝 TXTレコード解析開始")
+            for (key, value) in txtRecord {
+                print("📄 TXT key: \(key)")
+                if key == "port" {
+                    switch value {
+                    case .data(let data):
+                        if let portString = String(data: data, encoding: .utf8), let port = Int(portString) {
+                            httpPort = port
+                            print("🔌 HTTPポート発見: \(httpPort)")
+                        }
+                    case .string(let portString):
+                        if let port = Int(portString) {
+                            httpPort = port
+                            print("🔌 HTTPポート発見: \(httpPort)")
+                        }
+                    }
+                    break
+                }
+            }
+        } else {
+            print("⚠️ TXTレコードが存在しません")
+        }
+        
+        // mDNSサービス名を使用してホスト名を構築
+        let serverHost = "\(name).\(type)\(domain)"
+        let serverEndpoint = "http://\(serverHost):\(httpPort)"
+        
+        let server = DiscoveredServer(
+            name: name,
+            endpoint: serverEndpoint,
+            type: .bonjour
+        )
+        
+        if !discoveredServers.contains(where: { $0.endpoint == server.endpoint }) {
+            discoveredServers.append(server)
+            print("✅ Bonjourサービス追加成功: \(serverEndpoint)")
+        } else {
+            print("ℹ️ サービス既存: \(serverEndpoint)")
+        }
     }
     
     private func resolveService(name: String, type: String, domain: String) {

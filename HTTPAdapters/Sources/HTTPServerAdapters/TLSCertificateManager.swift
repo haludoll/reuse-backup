@@ -2,7 +2,9 @@ import CryptoKit
 import Foundation
 import NIOSSL
 import Security
-import UIKit
+#if canImport(UIKit)
+    import UIKit
+#endif
 
 /// TLS証明書管理クラス
 /// 自己署名証明書の生成、管理、検証を行う
@@ -106,8 +108,8 @@ public final class TLSCertificateManager: Sendable {
                     let privateKeyData = try Data(contentsOf: certificateDirectory
                         .appendingPathComponent(privateKeyFileName)
                     )
-                    try saveCertificateToKeychain(certificateData)
-                    try savePrivateKeyToKeychain(privateKeyData)
+                    try saveCertificateToKeychain(Array(certificateData))
+                    try savePrivateKeyToKeychain(Array(privateKeyData))
 
                     // ファイルの作成日時を取得して保存
                     let attributes = try FileManager.default.attributesOfItem(atPath: certificateURL.path)
@@ -413,7 +415,7 @@ public final class TLSCertificateManager: Sendable {
 
     /// 証明書が作成日時ベースで有効かチェック
     /// - Returns: 有効かどうか
-    private func isCertificateValidWithCreationDate() -> Bool {
+    func isCertificateValidWithCreationDate() -> Bool {
         guard let creationDate = loadCertificateCreationDateFromKeychain() else {
             print("⚠️ TLSCertificateManager: 証明書の作成日時が見つかりません - 再生成が必要")
             return false // 作成日時が不明な場合は無効とみなす
@@ -469,10 +471,12 @@ public final class TLSCertificateManager: Sendable {
     /// デバイス固有の識別子を取得
     /// - Returns: デバイス識別子
     private func getDeviceIdentifier() -> String {
-        // iOS: identifierForVendorを使用
-        if let vendorID = UIDevice.current.identifierForVendor {
-            return vendorID.uuidString
-        }
+        #if canImport(UIKit)
+            // iOS: identifierForVendorを使用
+            if let vendorID = UIDevice.current.identifierForVendor {
+                return vendorID.uuidString
+            }
+        #endif
 
         // フォールバック: ランダムUUIDを生成してKeychainに保存
         let deviceIdQuery: [String: Any] = [
@@ -612,10 +616,10 @@ public final class TLSCertificateManager: Sendable {
         let version = Data([0x02, 0x01, 0x02]) // Version 3
         let serial = encodeASN1Integer(serialNumber)
         let algorithm = encodeASN1ObjectIdentifier("1.2.840.113549.1.1.11") // SHA256withRSA
-        let issuer = try encodeASN1DistinguishedName(subjectName)
-        let validity = try encodeASN1Validity(from: validFrom, to: validTo)
-        let subject = try encodeASN1DistinguishedName(subjectName)
-        let publicKeyInfo = try encodeASN1PublicKeyInfo(publicKeyData)
+        let issuer = encodeASN1DistinguishedName(subjectName)
+        let validity = encodeASN1Validity(from: validFrom, to: validTo)
+        let subject = encodeASN1DistinguishedName(subjectName)
+        let publicKeyInfo = encodeASN1PublicKeyInfo(publicKeyData)
 
         var tbsData = Data()
         tbsData.append(version)
@@ -703,11 +707,12 @@ public final class TLSCertificateManager: Sendable {
             }
         }
 
-        if bytes.first! & 0x80 != 0 {
+        if let firstByte = bytes.first, firstByte & 0x80 != 0 {
             bytes.insert(0, at: 0)
         }
 
-        return Data([0x02, UInt8(bytes.count)]) + bytes
+        let length = min(bytes.count, 255) // 長さを255に制限
+        return Data([0x02, UInt8(length)]) + bytes.prefix(length)
     }
 
     private func encodeASN1ObjectIdentifier(_ oid: String) -> Data {
@@ -716,7 +721,8 @@ public final class TLSCertificateManager: Sendable {
         var encoded = Data()
 
         if components.count >= 2 {
-            encoded.append(UInt8(components[0] * 40 + components[1]))
+            let firstOctet = min(components[0] * 40 + components[1], 255)
+            encoded.append(UInt8(firstOctet))
 
             for component in components.dropFirst(2) {
                 var value = component

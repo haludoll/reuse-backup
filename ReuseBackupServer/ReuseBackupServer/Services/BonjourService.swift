@@ -158,7 +158,10 @@ final class BonjourService: ObservableObject {
         txtRecord["device"] = UIDevice.current.model
 
         // ポート情報（クライアントが接続するため）
-        txtRecord["port"] = String(port.rawValue)
+        let portString = String(port.rawValue)
+        txtRecord["port"] = portString
+        
+        logger.info("TXTレコード作成: version=1.0.0, status=\(status), capacity=\(capacity), device=\(UIDevice.current.model), port=\(portString)")
 
         return txtRecord
     }

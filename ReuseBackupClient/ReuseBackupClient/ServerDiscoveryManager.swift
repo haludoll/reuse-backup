@@ -150,9 +150,16 @@ class ServerDiscoveryManager: ObservableObject {
                         
                         // NWBrowser.Resultのメタデータから情報を取得
                         let metadata = result.metadata
-                        if case .bonjour(let bonjourMetadata) = metadata {
+                        print("📊 メタデータタイプ: \(metadata)")
+                        
+                        switch metadata {
+                        case .bonjour(let bonjourMetadata):
                             txtRecord = bonjourMetadata
                             print("📋 BonjourメタデータからTXTレコード取得: \(txtRecord != nil ? "成功" : "失敗")")
+                        case .none:
+                            print("⚠️ メタデータが.noneです - TXTレコード情報なし")
+                        @unknown default:
+                            print("❓ 未知のメタデータタイプ: \(metadata)")
                         }
                         
                         self.addDiscoveredServer(name: name, type: type, domain: domain, txtRecord: txtRecord)

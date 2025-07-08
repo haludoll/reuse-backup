@@ -38,7 +38,7 @@ final class BonjourService: NSObject, ObservableObject {
         serviceName = "ReuseBackupServer-\(deviceName)"
         
         super.init()
-        logger.info("BonjourService initialized with service name: \(serviceName), port: \(port)")
+        logger.info("BonjourService initialized with service name: \(self.serviceName), port: \(self.port)")
     }
     
     init(port: UInt16) {
@@ -49,7 +49,7 @@ final class BonjourService: NSObject, ObservableObject {
         serviceName = "ReuseBackupServer-\(deviceName)"
 
         super.init()
-        logger.info("BonjourService initialized with service name: \(serviceName), port: \(port)")
+        logger.info("BonjourService initialized with service name: \(self.serviceName), port: \(self.port)")
     }
 
     // MARK: - Public Methods
@@ -65,7 +65,6 @@ final class BonjourService: NSObject, ObservableObject {
 
         // TXTレコードを作成
         let txtRecordData = createTXTRecordData()
-        logger.info("TXTレコードデータサイズ: \(txtRecordData.count) bytes")
 
         // NetServiceを作成
         netService = NetService(domain: "", type: "_reuse-backup._tcp", name: serviceName, port: Int32(port))
@@ -80,14 +79,12 @@ final class BonjourService: NSObject, ObservableObject {
 
         // TXTレコードを設定
         service.setTXTRecord(txtRecordData)
-        logger.info("TXTレコード設定完了")
 
         // デリゲートを設定
         service.delegate = self
         
         // サービスの発信を開始
         service.publish()
-        logger.info("NetService発信開始: name=\(serviceName), type=_reuse-backup._tcp, port=\(port)")
     }
 
     /// Bonjourサービスの発信を停止
@@ -142,8 +139,6 @@ final class BonjourService: NSObject, ObservableObject {
         let portString = String(port)
         txtDict["port"] = portString.data(using: .utf8)
 
-        logger.info("TXTレコード作成: version=1.0.0, status=\(status), capacity=\(capacity), device=\(UIDevice.current.model), port=\(portString)")
-
         return NetService.data(fromTXTRecord: txtDict)
     }
 
@@ -153,7 +148,7 @@ final class BonjourService: NSObject, ObservableObject {
 
 extension BonjourService: NetServiceDelegate {
     func netServiceDidPublish(_ sender: NetService) {
-        logger.info("Bonjour service published successfully: \(sender.name)")
+        logger.info("Bonjour service published successfully")
         DispatchQueue.main.async {
             self.isAdvertising = true
             self.lastError = nil
@@ -163,21 +158,6 @@ extension BonjourService: NetServiceDelegate {
     func netService(_ sender: NetService, didNotPublish errorDict: [String : NSNumber]) {
         logger.error("Bonjour service failed to publish: \(errorDict)")
         
-        // エラーコードの詳細をログ出力
-        for (key, value) in errorDict {
-            logger.error("エラー詳細: \(key) = \(value)")
-            if key == NSNetServicesErrorCode.rawValue {
-                if let errorCode = NetServiceErrorCode(rawValue: value.intValue) {
-                    logger.error("NetServiceErrorCode: \(errorCode)")
-                    
-                    // NoAuth エラーの特別な処理
-                    if errorCode == .noAuthError {
-                        logger.error("Local network permission required")
-                    }
-                }
-            }
-        }
-        
         let error = NSError(domain: "BonjourService", code: -1, userInfo: errorDict as [String: Any])
         DispatchQueue.main.async {
             self.isAdvertising = false
@@ -186,7 +166,7 @@ extension BonjourService: NetServiceDelegate {
     }
     
     func netServiceDidStop(_ sender: NetService) {
-        logger.info("Bonjour service stopped: \(sender.name)")
+        logger.info("Bonjour service stopped")
         DispatchQueue.main.async {
             self.isAdvertising = false
         }

@@ -11,7 +11,7 @@ ReuseBackupは、古いiPhoneを写真・動画のローカルバックアップ
 - **[クライアントアプリ仕様](./client/README.md)** - ReuseBackupClient（新しいiPhone用）
 
 ### 共通仕様
-- **[API仕様](./api/README.md)** - サーバー・クライアント間の通信仕様
+- **[API仕様](../../api/reuse-backup-server-api.yaml)** - サーバー・クライアント間の通信仕様（OpenAPI形式）
 - **[ネットワーク仕様](./network/README.md)** - サーバー発見とネットワーク通信
 
 ### 機能仕様

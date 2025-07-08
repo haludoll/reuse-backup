@@ -2,11 +2,17 @@ import Foundation
 import APISharedModels
 
 class HTTPClient {
-    private let session = URLSession.shared
+    private let session: URLSession
     private let decoder: JSONDecoder
     private let encoder: JSONEncoder
     
     init() {
+        // mDNS接続用に最適化したURLSession設定
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 15.0  // mDNS解決のため長めに設定
+        config.timeoutIntervalForResource = 30.0
+        session = URLSession(configuration: config)
+        
         decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         
@@ -20,7 +26,7 @@ class HTTPClient {
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.timeoutInterval = 5.0
+        request.timeoutInterval = 10.0  // mDNS解決を考慮して延長
         
         let (data, response) = try await session.data(for: request)
         
@@ -47,7 +53,7 @@ class HTTPClient {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.timeoutInterval = 10.0
+        request.timeoutInterval = 15.0  // mDNS解決を考慮して延長
         
         do {
             let requestData = try encoder.encode(messageRequest)

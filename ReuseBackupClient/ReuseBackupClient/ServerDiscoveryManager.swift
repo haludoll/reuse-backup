@@ -152,22 +152,18 @@ class ServerDiscoveryManager: ObservableObject {
         // TXTレコードからHTTPポート情報を取得
         var httpPort = 8080 // デフォルト値
         
-        // デバッグ: TXTレコードの内容をログ出力
+        // TXTレコードからポート情報を取得
         if let txtRecord = txtRecord {
-            print("🔍 [DEBUG] TXTレコード取得成功: \(txtRecord.count)個のエントリ")
             for (key, value) in txtRecord {
-                print("🔍 [DEBUG] TXTエントリ: \(key) = \(value)")
                 if key == "port" {
                     switch value {
                     case .data(let data):
                         if let portString = String(data: data, encoding: .utf8), let port = Int(portString) {
                             httpPort = port
-                            print("🔍 [DEBUG] ポート解析成功: \(httpPort)")
                         }
                     case .string(let portString):
                         if let port = Int(portString) {
                             httpPort = port
-                            print("🔍 [DEBUG] ポート解析成功: \(httpPort)")
                         }
                     case .none,
                          .empty:
@@ -177,34 +173,35 @@ class ServerDiscoveryManager: ObservableObject {
                     }
                 }
             }
-        } else {
-            print("🔍 [DEBUG] TXTレコードなし - デフォルトポート8080を使用")
         }
         
-        // ホスト名を構築（IPアドレスがある場合は優先）
-        let serverHost: String
-        if let ipAddress = ipAddress {
-            serverHost = ipAddress
-            print("🔍 [DEBUG] IPアドレス使用: \(ipAddress)")
-        } else {
-            serverHost = "\(name).local"
-            print("🔍 [DEBUG] mDNSホスト名使用: \(serverHost)")
-        }
-        
-        let serverEndpoint = "http://\(serverHost):\(httpPort)"
-        
-        // デバッグ: 接続情報をログ出力
-        print("🔍 [DEBUG] 接続先: \(serverEndpoint)")
-        print("🔍 [DEBUG] サービス名: \(name), ポート: \(httpPort)")
+        // まずmDNSホスト名で接続を試行（標準的なアプローチ）
+        let mDNSHost = "\(name).local"
+        let mDNSEndpoint = "http://\(mDNSHost):\(httpPort)"
         
         let server = DiscoveredServer(
             name: name,
-            endpoint: serverEndpoint,
+            endpoint: mDNSEndpoint,
             type: .bonjour
         )
         
         if !discoveredServers.contains(where: { $0.endpoint == server.endpoint }) {
             discoveredServers.append(server)
+        }
+        
+        // IPアドレスが取得できている場合は、フォールバック用として追加
+        if let ipAddress = ipAddress {
+            let ipEndpoint = "http://\(ipAddress):\(httpPort)"
+            
+            let ipServer = DiscoveredServer(
+                name: "\(name) (IP直接)",
+                endpoint: ipEndpoint,
+                type: .bonjour
+            )
+            
+            if !discoveredServers.contains(where: { $0.endpoint == ipServer.endpoint }) {
+                discoveredServers.append(ipServer)
+            }
         }
     }
     
@@ -386,33 +383,6 @@ class NetServiceTXTResolver: NSObject, NetServiceDelegate {
     }
     
     func netServiceDidResolveAddress(_ sender: NetService) {
-        // デバッグ: 解決されたアドレス情報をログ出力
-        if let addresses = sender.addresses {
-            print("🔍 [DEBUG] NetService解決済みアドレス数: \(addresses.count)")
-            for (index, addressData) in addresses.enumerated() {
-                let socketAddress = addressData.withUnsafeBytes { bytes in
-                    bytes.bindMemory(to: sockaddr.self).baseAddress!.pointee
-                }
-                
-                var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
-                let result = getnameinfo(
-                    addressData.withUnsafeBytes { $0.bindMemory(to: sockaddr.self).baseAddress },
-                    socklen_t(addressData.count),
-                    &hostname,
-                    socklen_t(hostname.count),
-                    nil,
-                    0,
-                    NI_NUMERICHOST
-                )
-                
-                if result == 0 {
-                    let ipAddress = String(cString: hostname)
-                    print("🔍 [DEBUG] アドレス\(index): \(ipAddress)")
-                } else {
-                    print("🔍 [DEBUG] アドレス\(index): 解析失敗")
-                }
-            }
-        }
         
         // 最初のIPアドレスを取得
         var ipAddress: String? = nil
@@ -431,7 +401,6 @@ class NetServiceTXTResolver: NSObject, NetServiceDelegate {
             
             if result == 0 {
                 ipAddress = String(cString: hostname)
-                print("🔍 [DEBUG] 取得IPアドレス: \(ipAddress!)")
             }
         }
         

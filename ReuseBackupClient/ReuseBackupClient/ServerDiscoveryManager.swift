@@ -14,6 +14,7 @@ class ServerDiscoveryManager: ObservableObject {
     
     private var browser: NWBrowser?
     private let httpClient = HTTPClient()
+    private var netServiceResolvers: [NetService] = []
     
     func startDiscovery() {
         isSearching = true
@@ -37,6 +38,12 @@ class ServerDiscoveryManager: ObservableObject {
         isSearching = false
         browser?.cancel()
         browser = nil
+        
+        // NetServiceResolverもクリーンアップ
+        for netService in netServiceResolvers {
+            netService.stop()
+        }
+        netServiceResolvers.removeAll()
     }
     
     func addManualServer() {
@@ -92,7 +99,9 @@ class ServerDiscoveryManager: ObservableObject {
         let parameters = NWParameters()
         parameters.includePeerToPeer = true
         
-        browser = NWBrowser(for: .bonjour(type: "_reuse-backup._tcp", domain: nil), using: parameters)
+        // TXTレコード取得のためのボンジュールブラウザ記述子を作成
+        let descriptor = NWBrowser.Descriptor.bonjour(type: "_reuse-backup._tcp", domain: nil)
+        browser = NWBrowser(for: descriptor, using: parameters)
         
         browser?.stateUpdateHandler = { [weak self] state in
             DispatchQueue.main.async {
@@ -143,26 +152,30 @@ class ServerDiscoveryManager: ObservableObject {
                 for result in results {
                     print("🔍 Processing result endpoint: \(result.endpoint)")
                     if case .service(let name, let type, let domain, _) = result.endpoint {
-                        print("🌐 Resolving service: \(name).\(type)\(domain)")
-                        
-                        // NWBrowser.Resultから直接TXTレコードを取得を試みる
-                        var txtRecord: NWTXTRecord? = nil
+                        print("🌐 Service discovered: \(name).\(type)\(domain)")
                         
                         // NWBrowser.Resultのメタデータから情報を取得
                         let metadata = result.metadata
                         print("📊 メタデータタイプ: \(metadata)")
                         
+                        var txtRecord: NWTXTRecord? = nil
                         switch metadata {
                         case .bonjour(let bonjourMetadata):
                             txtRecord = bonjourMetadata
                             print("📋 BonjourメタデータからTXTレコード取得: \(txtRecord != nil ? "成功" : "失敗")")
                         case .none:
-                            print("⚠️ メタデータが.noneです - TXTレコード情報なし")
+                            print("⚠️ メタデータが.noneです - サービス解決を実行してTXTレコード取得を試行")
                         @unknown default:
                             print("❓ 未知のメタデータタイプ: \(metadata)")
                         }
                         
-                        self.addDiscoveredServer(name: name, type: type, domain: domain, txtRecord: txtRecord)
+                        // TXTレコードが取得できない場合は、サービス解決を実行
+                        if txtRecord == nil {
+                            print("🔄 TXTレコード取得のためサービス解決を開始: \(name)")
+                            self.resolveServiceForTXTRecord(name: name, type: type, domain: domain)
+                        } else {
+                            self.addDiscoveredServer(name: name, type: type, domain: domain, txtRecord: txtRecord)
+                        }
                     } else {
                         print("⚠️ Endpoint is not a service type: \(result.endpoint)")
                     }
@@ -222,6 +235,45 @@ class ServerDiscoveryManager: ObservableObject {
         } else {
             print("ℹ️ サービス既存: \(serverEndpoint)")
         }
+    }
+    
+    private func resolveServiceForTXTRecord(name: String, type: String, domain: String) {
+        print("🚀 NetServiceでTXTレコード解決開始: name=\(name)")
+        
+        // NetServiceを使ってTXTレコードを解決
+        let netService = NetService(domain: domain, type: type, name: name)
+        netServiceResolvers.append(netService)
+        
+        // NetServiceDelegateを設定して解決結果を処理
+        let resolver = NetServiceTXTResolver(
+            serviceName: name,
+            serviceType: type,
+            serviceDomain: domain,
+            onResolved: { [weak self] txtRecord in
+                DispatchQueue.main.async {
+                    print("✅ NetServiceでTXTレコード解決成功: \(name)")
+                    self?.addDiscoveredServer(name: name, type: type, domain: domain, txtRecord: txtRecord)
+                    self?.cleanupNetServiceResolver(netService)
+                }
+            },
+            onFailed: { [weak self] error in
+                DispatchQueue.main.async {
+                    print("❌ NetServiceでTXTレコード解決失敗: \(error)")
+                    self?.addDiscoveredServer(name: name, type: type, domain: domain, txtRecord: nil)
+                    self?.cleanupNetServiceResolver(netService)
+                }
+            }
+        )
+        
+        // 解決を開始
+        netService.delegate = resolver
+        netService.resolve(withTimeout: 3.0)
+        print("📡 NetService解決開始: \(name)")
+    }
+    
+    private func cleanupNetServiceResolver(_ netService: NetService) {
+        netService.stop()
+        netServiceResolvers.removeAll { $0 === netService }
     }
     
     private func resolveService(name: String, type: String, domain: String) {
@@ -342,6 +394,72 @@ class ServerDiscoveryManager: ObservableObject {
         )
         
         discoveredServers.append(server)
+    }
+}
+
+class NetServiceTXTResolver: NSObject, NetServiceDelegate {
+    private let serviceName: String
+    private let serviceType: String
+    private let serviceDomain: String
+    private let onResolved: (NWTXTRecord?) -> Void
+    private let onFailed: (Error) -> Void
+    
+    init(serviceName: String, serviceType: String, serviceDomain: String, 
+         onResolved: @escaping (NWTXTRecord?) -> Void, 
+         onFailed: @escaping (Error) -> Void) {
+        self.serviceName = serviceName
+        self.serviceType = serviceType
+        self.serviceDomain = serviceDomain
+        self.onResolved = onResolved
+        self.onFailed = onFailed
+        super.init()
+    }
+    
+    func netServiceDidResolveAddress(_ sender: NetService) {
+        print("📋 NetService解決成功: \(serviceName)")
+        
+        // TXTレコードデータを取得
+        if let txtData = sender.txtRecordData() {
+            print("📄 TXTレコードデータ取得成功: \(txtData.count) bytes")
+            
+            // NSDataからNWTXTRecordに変換
+            let txtRecord = convertToNWTXTRecord(from: txtData)
+            print("🔄 NWTXTRecord変換結果: \(txtRecord != nil ? "成功" : "失敗")")
+            onResolved(txtRecord)
+        } else {
+            print("⚠️ TXTレコードデータなし")
+            onResolved(nil)
+        }
+    }
+    
+    func netService(_ sender: NetService, didNotResolve errorDict: [String : NSNumber]) {
+        print("❌ NetService解決失敗: \(errorDict)")
+        let error = NSError(domain: "NetServiceError", code: -1, userInfo: errorDict as [String: Any])
+        onFailed(error)
+    }
+    
+    private func convertToNWTXTRecord(from data: Data) -> NWTXTRecord? {
+        print("🔄 TXTレコード変換開始: \(data.count) bytes")
+        
+        // NetService.dictionary(fromTXTRecord:)を使ってTXTレコードを解析
+        let txtDict = NetService.dictionary(fromTXTRecord: data)
+        print("📝 TXTレコード辞書: \(txtDict)")
+        
+        var nwTxtRecord = NWTXTRecord()
+        for (key, value) in txtDict {
+            if let keyString = key as String?, let dataValue = value as Data? {
+                if let stringValue = String(data: dataValue, encoding: .utf8) {
+                    nwTxtRecord[keyString] = stringValue
+                    print("📄 TXTエントリ追加: \(keyString) = \(stringValue)")
+                } else {
+                    // バイナリデータの場合は直接設定
+                    nwTxtRecord[keyString] = dataValue
+                    print("📄 TXTエントリ追加 (binary): \(keyString) = \(dataValue.count) bytes")
+                }
+            }
+        }
+        
+        return nwTxtRecord.isEmpty ? nil : nwTxtRecord
     }
 }
 

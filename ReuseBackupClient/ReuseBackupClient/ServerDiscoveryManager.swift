@@ -15,6 +15,7 @@ class ServerDiscoveryManager: ObservableObject {
     private var browser: NWBrowser?
     private let httpClient = HTTPClient()
     private var netServiceResolvers: [NetService] = []
+    private var netServiceTXTResolvers: [NetServiceTXTResolver] = []
     
     func startDiscovery() {
         isSearching = true
@@ -44,6 +45,7 @@ class ServerDiscoveryManager: ObservableObject {
             netService.stop()
         }
         netServiceResolvers.removeAll()
+        netServiceTXTResolvers.removeAll()
     }
     
     func addManualServer() {
@@ -268,6 +270,9 @@ class ServerDiscoveryManager: ObservableObject {
             }
         )
         
+        // resolverインスタンスを保持（delegate参照を維持するため）
+        netServiceTXTResolvers.append(resolver)
+        
         // 解決を開始
         netService.delegate = resolver
         print("🔧 NetService.delegateを設定: \(resolver)")
@@ -288,6 +293,11 @@ class ServerDiscoveryManager: ObservableObject {
     private func cleanupNetServiceResolver(_ netService: NetService) {
         netService.stop()
         netServiceResolvers.removeAll { $0 === netService }
+        
+        // 対応するresolverも削除
+        if let serviceName = netService.name.isEmpty ? nil : netService.name {
+            netServiceTXTResolvers.removeAll { $0.serviceName == serviceName }
+        }
     }
     
     private func resolveService(name: String, type: String, domain: String) {
@@ -412,7 +422,7 @@ class ServerDiscoveryManager: ObservableObject {
 }
 
 class NetServiceTXTResolver: NSObject, NetServiceDelegate {
-    private let serviceName: String
+    let serviceName: String  // publicアクセスに変更
     private let serviceType: String
     private let serviceDomain: String
     private let onResolved: (NWTXTRecord?) -> Void

@@ -241,8 +241,11 @@ class ServerDiscoveryManager: ObservableObject {
         print("🚀 NetServiceでTXTレコード解決開始: name=\(name)")
         
         // NetServiceを使ってTXTレコードを解決
-        let netService = NetService(domain: domain, type: type, name: name)
+        // domainが空の場合はローカルドメインを明示的に指定
+        let resolvedDomain = domain.isEmpty ? "local." : domain
+        let netService = NetService(domain: resolvedDomain, type: type, name: name)
         netServiceResolvers.append(netService)
+        print("🔧 NetService作成: domain=\(resolvedDomain), type=\(type), name=\(name)")
         
         // NetServiceDelegateを設定して解決結果を処理
         let resolver = NetServiceTXTResolver(
@@ -267,8 +270,17 @@ class ServerDiscoveryManager: ObservableObject {
         
         // 解決を開始
         netService.delegate = resolver
-        netService.resolve(withTimeout: 3.0)
+        netService.resolve(withTimeout: 5.0)
         print("📡 NetService解決開始: \(name)")
+        
+        // 8秒でタイムアウト（Bonjourの5秒タイムアウトより後に実行）
+        DispatchQueue.main.asyncAfter(deadline: .now() + 8.0) {
+            if self.netServiceResolvers.contains(where: { $0 === netService }) {
+                print("⏰ NetService解決タイムアウト: \(name)")
+                self.addDiscoveredServer(name: name, type: type, domain: domain, txtRecord: nil)
+                self.cleanupNetServiceResolver(netService)
+            }
+        }
     }
     
     private func cleanupNetServiceResolver(_ netService: NetService) {
@@ -413,6 +425,7 @@ class NetServiceTXTResolver: NSObject, NetServiceDelegate {
         self.onResolved = onResolved
         self.onFailed = onFailed
         super.init()
+        print("🔧 NetServiceTXTResolver初期化: \(serviceName)")
     }
     
     func netServiceDidResolveAddress(_ sender: NetService) {
@@ -433,9 +446,17 @@ class NetServiceTXTResolver: NSObject, NetServiceDelegate {
     }
     
     func netService(_ sender: NetService, didNotResolve errorDict: [String : NSNumber]) {
-        print("❌ NetService解決失敗: \(errorDict)")
+        print("❌ NetService解決失敗: \(serviceName), エラー: \(errorDict)")
         let error = NSError(domain: "NetServiceError", code: -1, userInfo: errorDict as [String: Any])
         onFailed(error)
+    }
+    
+    func netServiceWillResolve(_ sender: NetService) {
+        print("🔄 NetService解決開始通知: \(serviceName)")
+    }
+    
+    func netServiceDidStop(_ sender: NetService) {
+        print("🛑 NetService停止: \(serviceName)")
     }
     
     private func convertToNWTXTRecord(from data: Data) -> NWTXTRecord? {

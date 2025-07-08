@@ -64,7 +64,7 @@ class ServerDiscoveryManager: ObservableObject {
         if trimmedAddress.hasPrefix("http://") || trimmedAddress.hasPrefix("https://") {
             endpoint = trimmedAddress
         } else {
-            endpoint = "http://\(trimmedAddress)"
+            endpoint = "https://\(trimmedAddress)"
         }
         
         // URL形式の検証
@@ -147,8 +147,8 @@ class ServerDiscoveryManager: ObservableObject {
     }
     
     private func addDiscoveredServer(name: String, type: String, domain: String, txtRecord: NWTXTRecord?, ipAddress: String? = nil) {
-        // TXTレコードからHTTPポート情報を取得
-        var httpPort = 8080 // デフォルト値
+        // TXTレコードからHTTPSポート情報を取得
+        var httpsPort = 8443 // デフォルト値
         
         // TXTレコードからポート情報を取得
         if let txtRecord = txtRecord {
@@ -157,11 +157,11 @@ class ServerDiscoveryManager: ObservableObject {
                     switch value {
                     case .data(let data):
                         if let portString = String(data: data, encoding: .utf8), let port = Int(portString) {
-                            httpPort = port
+                            httpsPort = port
                         }
                     case .string(let portString):
                         if let port = Int(portString) {
-                            httpPort = port
+                            httpsPort = port
                         }
                     case .none,
                          .empty:
@@ -175,7 +175,7 @@ class ServerDiscoveryManager: ObservableObject {
         
         // IPアドレスが取得できている場合は、フォールバック用として追加
         if let ipAddress = ipAddress {
-            let ipEndpoint = "http://\(ipAddress):\(httpPort)"
+            let ipEndpoint = "https://\(ipAddress):\(httpsPort)"
             
             let ipServer = DiscoveredServer(
                 name: name,
@@ -244,7 +244,7 @@ class ServerDiscoveryManager: ObservableObject {
     private func addLocalHostServer() {
         let server = DiscoveredServer(
             name: "ローカルサーバー",
-            endpoint: "http://localhost:8080",
+            endpoint: "https://localhost:8443",
             type: .localhost
         )
         

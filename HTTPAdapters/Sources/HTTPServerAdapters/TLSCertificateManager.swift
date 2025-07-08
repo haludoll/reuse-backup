@@ -40,6 +40,9 @@ public final class TLSCertificateManager: Sendable {
     /// 秘密鍵のKeychain保存キー
     private static let privateKeyKeychainKey = "tls_private_key"
 
+    /// 証明書作成日時のKeychain保存キー
+    private static let certificateCreationDateKey = "tls_certificate_creation_date"
+
     /// 証明書保存ディレクトリ（旧版との互換性用）
     private let certificateDirectory: URL
 
@@ -81,15 +84,15 @@ public final class TLSCertificateManager: Sendable {
         if let certificateData = loadCertificateFromKeychain() {
             do {
                 let certificate = try NIOSSLCertificate(bytes: certificateData, format: .pem)
-                if isCertificateValidFromData(certificateData) {
+                if isCertificateValidWithCreationDate() {
                     return [certificate]
                 } else {
                     // 期限切れの場合は削除して新規生成
-                    try removeCertificateFromKeychain()
+                    try removeAllCertificateDataFromKeychain()
                 }
             } catch {
                 // 証明書が無効な場合は削除して新規生成
-                try removeCertificateFromKeychain()
+                try removeAllCertificateDataFromKeychain()
             }
         }
 
@@ -105,6 +108,12 @@ public final class TLSCertificateManager: Sendable {
                     )
                     try saveCertificateToKeychain(certificateData)
                     try savePrivateKeyToKeychain(privateKeyData)
+
+                    // ファイルの作成日時を取得して保存
+                    let attributes = try FileManager.default.attributesOfItem(atPath: certificateURL.path)
+                    let creationDate = attributes[.creationDate] as? Date ?? Date()
+                    try saveCertificateCreationDateToKeychain(creationDate)
+
                     try removeCertificateFiles()
                     return [certificate]
                 } else {
@@ -143,12 +152,17 @@ public final class TLSCertificateManager: Sendable {
     /// - Returns: 証明書チェーン
     /// - Throws: CertificateError
     private func generateSelfSignedCertificate() throws -> [NIOSSLCertificate] {
+        print("🔐 TLSCertificateManager: デバイス固有の新しい証明書を生成中...")
+
         // CryptoKitを使用してデバイス固有の証明書を動的に生成
         let (certificateData, privateKeyData) = try generateDeviceSpecificCertificate()
 
         // 生成した証明書と秘密鍵をKeychainに保存
         try saveCertificateToKeychain(certificateData)
         try savePrivateKeyToKeychain(privateKeyData)
+        try saveCertificateCreationDateToKeychain(Date())
+
+        print("✅ TLSCertificateManager: 新しい証明書が正常に生成され、Keychainに保存されました（有効期限: \(Self.certificateValidityDays)日間）")
 
         // 生成された証明書を読み込み
         let certificate = try NIOSSLCertificate(bytes: certificateData, format: .pem)
@@ -334,6 +348,89 @@ public final class TLSCertificateManager: Sendable {
         ]
 
         SecItemDelete(query as CFDictionary)
+    }
+
+    /// 証明書作成日時をKeychainに保存
+    /// - Parameter creationDate: 証明書作成日時
+    /// - Throws: CertificateError
+    private func saveCertificateCreationDateToKeychain(_ creationDate: Date) throws {
+        let data = String(creationDate.timeIntervalSince1970).data(using: .utf8)!
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: Self.keychainService,
+            kSecAttrAccount as String: Self.certificateCreationDateKey,
+            kSecValueData as String: data,
+        ]
+
+        // 既存のアイテムを削除
+        SecItemDelete(query as CFDictionary)
+
+        // 新しいアイテムを追加
+        let status = SecItemAdd(query as CFDictionary, nil)
+
+        guard status == errSecSuccess else {
+            throw CertificateError.fileSystemError("証明書作成日時のKeychain保存に失敗しました: \(status)")
+        }
+    }
+
+    /// Keychainから証明書作成日時を読み込み
+    /// - Returns: 証明書作成日時
+    private func loadCertificateCreationDateFromKeychain() -> Date? {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: Self.keychainService,
+            kSecAttrAccount as String: Self.certificateCreationDateKey,
+            kSecReturnData as String: true,
+        ]
+
+        var result: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+
+        guard status == errSecSuccess, let data = result as? Data,
+              let timeIntervalString = String(data: data, encoding: .utf8),
+              let timeInterval = Double(timeIntervalString)
+        else {
+            return nil
+        }
+
+        return Date(timeIntervalSince1970: timeInterval)
+    }
+
+    /// Keychainから証明書関連のすべてのデータを削除
+    /// - Throws: CertificateError
+    private func removeAllCertificateDataFromKeychain() throws {
+        try removeCertificateFromKeychain()
+        try removePrivateKeyFromKeychain()
+
+        // 証明書作成日時も削除
+        let dateQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: Self.keychainService,
+            kSecAttrAccount as String: Self.certificateCreationDateKey,
+        ]
+        SecItemDelete(dateQuery as CFDictionary)
+    }
+
+    /// 証明書が作成日時ベースで有効かチェック
+    /// - Returns: 有効かどうか
+    private func isCertificateValidWithCreationDate() -> Bool {
+        guard let creationDate = loadCertificateCreationDateFromKeychain() else {
+            print("⚠️ TLSCertificateManager: 証明書の作成日時が見つかりません - 再生成が必要")
+            return false // 作成日時が不明な場合は無効とみなす
+        }
+
+        let expirationDate = creationDate.addingTimeInterval(TimeInterval(Self.certificateValidityDays * 24 * 60 * 60))
+        let isValid = Date() < expirationDate
+
+        if isValid {
+            let daysRemaining = Int(expirationDate.timeIntervalSinceNow / (24 * 60 * 60))
+            print("✅ TLSCertificateManager: 証明書は有効です（残り\(daysRemaining)日）")
+        } else {
+            let daysExpired = Int(-expirationDate.timeIntervalSinceNow / (24 * 60 * 60))
+            print("❌ TLSCertificateManager: 証明書が期限切れです（\(daysExpired)日前に期限切れ）- 再生成します")
+        }
+
+        return isValid
     }
 
     // MARK: - Dynamic Certificate Generation
@@ -693,19 +790,6 @@ public final class TLSCertificateManager: Sendable {
             }
             return Data([0x80 | UInt8(bytes.count)]) + bytes
         }
-    }
-
-    /// データから証明書の有効性をチェック
-    /// - Parameter certificateData: 証明書データ
-    /// - Returns: 有効かどうか
-    private func isCertificateValidFromData(_ certificateData: [UInt8]) -> Bool {
-        // 簡易的な有効性チェック
-        // 実際の実装では証明書の有効期限を解析
-        let pemString = String(bytes: certificateData, encoding: .utf8) ?? ""
-
-        // 証明書が存在し、基本的なPEM形式かどうかをチェック
-        return pemString.contains("-----BEGIN CERTIFICATE-----") &&
-            pemString.contains("-----END CERTIFICATE-----")
     }
 }
 

@@ -33,7 +33,11 @@
       "mcp__github__get_issue_comments",
       "mcp__github__list_issues",
       "Bash(gh repo view:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(./scripts/worktree-manager.sh:*)",
+      "Bash(swift package:*)",
+      "Bash(git rm:*)",
+      "WebFetch(domain:github.com)"
     ],
     "deny": []
   }

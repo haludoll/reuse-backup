@@ -56,7 +56,7 @@ final class BonjourService: ObservableObject {
         do {
             // TXTレコードを作成
             let txtRecord = createTXTRecord()
-            logger.info("TXTレコード内容確認: \(txtRecord)")
+            logger.info("TXTレコード内容確認: \(String(describing: txtRecord))")
 
             // NWParametersを設定
             let parameters = NWParameters.tcp
@@ -69,12 +69,12 @@ final class BonjourService: ObservableObject {
                 domain: nil,
                 txtRecord: txtRecord
             )
-            logger.info("NWListener.Service作成: name=\(serviceName), type=_reuse-backup._tcp")
+            logger.info("NWListener.Service作成: name=\(self.serviceName), type=_reuse-backup._tcp")
 
             // 自動ポート割り当てを使用してNWListenerを作成
             let bonjourPort = NWEndpoint.Port(rawValue: 0) ?? NWEndpoint.Port(8080)
             nwListener = try NWListener(using: parameters, on: bonjourPort)
-            logger.info("NWListener作成完了: port=\(bonjourPort)")
+            logger.info("NWListener作成完了: port=\(String(describing: bonjourPort))")
 
             // Bonjourサービスを発信
             nwListener?.service = service
@@ -176,10 +176,10 @@ final class BonjourService: ObservableObject {
         case .ready:
             logger.info("Bonjour service is ready")
             if let actualPort = nwListener?.port {
-                logger.info("Bonjourサービス開始成功: 実際のポート=\(actualPort)")
+                logger.info("Bonjourサービス開始成功: 実際のポート=\(String(describing: actualPort))")
             }
             if let service = nwListener?.service {
-                logger.info("発信中のサービス: \(service)")
+                logger.info("発信中のサービス: \(String(describing: service))")
             }
             isAdvertising = true
             lastError = nil
@@ -210,7 +210,7 @@ final class BonjourService: ObservableObject {
             lastError = nil
 
         default:
-            logger.info("Bonjour service state changed to: \(state)")
+            logger.info("Bonjour service state changed to: \(String(describing: state))")
         }
     }
 }

@@ -38,7 +38,7 @@ final class BonjourService: NSObject, ObservableObject {
         serviceName = "ReuseBackupServer-\(deviceName)"
 
         super.init()
-        logger.info("BonjourService initialized with service name: \(serviceName), port: \(port)")
+        logger.info("BonjourService initialized with service name: \(self.serviceName), port: \(self.port)")
     }
 
     init(port: UInt16) {
@@ -49,7 +49,7 @@ final class BonjourService: NSObject, ObservableObject {
         serviceName = "ReuseBackupServer-\(deviceName)"
 
         super.init()
-        logger.info("BonjourService initialized with service name: \(serviceName), port: \(self.port)")
+        logger.info("BonjourService initialized with service name: \(self.serviceName), port: \(self.port)")
     }
 
     // MARK: - Public Methods
@@ -72,7 +72,11 @@ final class BonjourService: NSObject, ObservableObject {
         guard let service = netService else {
             logger.error("Failed to create NetService")
             DispatchQueue.main.async {
-                self.lastError = NSError(domain: "BonjourService", code: -1, userInfo: [NSLocalizedDescriptionKey: "NetService作成に失敗"])
+                self.lastError = NSError(
+                    domain: "BonjourService",
+                    code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: "NetService作成に失敗"]
+                )
             }
             return
         }

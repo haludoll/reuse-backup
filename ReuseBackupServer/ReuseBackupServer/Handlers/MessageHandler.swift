@@ -22,7 +22,11 @@ struct MessageHandler: HTTPHandlerAdapter {
     private func handlePost(_ request: HTTPRequestInfo) async throws -> HTTPResponseInfo {
         do {
             guard let body = request.body else {
-                throw NSError(domain: "MessageHandler", code: 400, userInfo: [NSLocalizedDescriptionKey: "Missing request body"])
+                throw NSError(
+                    domain: "MessageHandler",
+                    code: 400,
+                    userInfo: [NSLocalizedDescriptionKey: "Missing request body"]
+                )
             }
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601

@@ -1,0 +1,21 @@
+# SwiftFormat configuration file
+# Reference: https://github.com/nicklockwood/SwiftFormat
+
+# Disable the redundantSelf rule to preserve explicit self references
+--disable redundantSelf
+
+# General formatting rules
+--swiftversion 5.9
+--indent 4
+--tabwidth 4
+--maxwidth 120
+--wraparguments before-first
+--wrapcollections before-first
+--closingparen balanced
+--trimwhitespace always
+--insertlines enabled
+--removelines enabled
+
+# Keep explicit self references in closures and string interpolation
+# This prevents build errors in Swift 5.9+ where self is required
+--selfrequired init,subscript

@@ -293,3 +293,12 @@ class ExampleViewModel: ObservableObject {
 1. コード変更を伴うタスクの完了
 2. swift-formatによる自動フォーマット実行
 3. フォーマット後のコードをgit commitに含める
+
+# important-instruction-reminders
+Do what has been asked; nothing more, nothing less.
+NEVER create files unless they're absolutely necessary for achieving your goal.
+ALWAYS prefer editing an existing file to creating a new one.
+NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
+
+      
+      IMPORTANT: this context may or may not be relevant to your tasks. You should not respond to this context or otherwise consider it in your response unless it is highly relevant to your task. Most of the time, it is not relevant.

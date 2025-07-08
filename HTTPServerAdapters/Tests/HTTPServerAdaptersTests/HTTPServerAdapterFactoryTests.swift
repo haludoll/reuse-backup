@@ -7,21 +7,28 @@ final class HTTPServerAdapterFactoryTests: XCTestCase {
     func testCreateServerReturnsAppropriateAdapter() {
         let server = HTTPServerAdapterFactory.createServer(port: 8080)
         
-        if #available(iOS 15.0, *) {
-            XCTAssertTrue(server is HummingBirdV1Adapter, "Should return HummingBirdV1Adapter on iOS 15+")
+        if #available(iOS 17.0, *) {
+            XCTAssertTrue(server is HummingBirdV2Adapter, "Should return HummingBirdV2Adapter on iOS 17+")
+        } else if #available(iOS 15.0, *) {
+            XCTAssertTrue(server is HummingBirdV1Adapter, "Should return HummingBirdV1Adapter on iOS 15-16")
         } else {
-            XCTAssertTrue(server is FlyingFoxAdapter, "Should return FlyingFoxAdapter on iOS 14 and below")
+            XCTFail("iOS 15.0 or later is required")
         }
-    }
-    
-    func testCreateServerWithSpecificTypeFlyingFox() {
-        let server = HTTPServerAdapterFactory.createServer(type: .flyingFox, port: 8080)
-        XCTAssertTrue(server is FlyingFoxAdapter, "Should return FlyingFoxAdapter when explicitly requested")
     }
     
     func testCreateServerWithSpecificTypeHummingBirdV1() {
         let server = HTTPServerAdapterFactory.createServer(type: .hummingBirdV1, port: 8080)
         XCTAssertTrue(server is HummingBirdV1Adapter, "Should return HummingBirdV1Adapter when explicitly requested")
+    }
+    
+    func testCreateServerWithSpecificTypeHummingBirdV2() {
+        if #available(iOS 17.0, *) {
+            let server = HTTPServerAdapterFactory.createServer(type: .hummingBirdV2, port: 8080)
+            XCTAssertTrue(server is HummingBirdV2Adapter, "Should return HummingBirdV2Adapter when explicitly requested")
+        } else {
+            // iOS 17未満では HummingBirdV2 は使用できない
+            XCTSkip("HummingBird v2 requires iOS 17.0 or later")
+        }
     }
     
     func testServerHasCorrectPort() {
@@ -44,17 +51,6 @@ private struct MockHandler: HTTPHandlerAdapter {
 
 final class HTTPServerAdapterProtocolTests: XCTestCase {
     
-    func testFlyingFoxAdapterBasicFunctionality() async {
-        let adapter = FlyingFoxAdapter(port: 8081)
-        let mockHandler = MockHandler()
-        let route = HTTPRouteInfo(method: .get, path: "/test")
-        
-        await adapter.appendRoute(route, to: mockHandler)
-        
-        // 基本的な機能テスト（実際のサーバー起動はしない）
-        XCTAssertEqual(adapter.port, 8081)
-    }
-    
     func testHummingBirdV1AdapterBasicFunctionality() async {
         let adapter = HummingBirdV1Adapter(port: 8082)
         let mockHandler = MockHandler()
@@ -63,5 +59,19 @@ final class HTTPServerAdapterProtocolTests: XCTestCase {
         await adapter.appendRoute(route, to: mockHandler)
         
         XCTAssertEqual(adapter.port, 8082)
+    }
+    
+    func testHummingBirdV2AdapterBasicFunctionality() async {
+        if #available(iOS 17.0, *) {
+            let adapter = HummingBirdV2Adapter(port: 8083)
+            let mockHandler = MockHandler()
+            let route = HTTPRouteInfo(method: .get, path: "/test")
+            
+            await adapter.appendRoute(route, to: mockHandler)
+            
+            XCTAssertEqual(adapter.port, 8083)
+        } else {
+            XCTSkip("HummingBird v2 requires iOS 17.0 or later")
+        }
     }
 }

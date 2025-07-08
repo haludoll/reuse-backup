@@ -36,7 +36,8 @@
       "Bash(grep:*)",
       "Bash(swift test)",
       "Bash(swift test:*)",
-      "Bash(swift format:*)"
+      "Bash(swift format:*)",
+      "Bash(git worktree:*)"
     ],
     "deny": []
   }

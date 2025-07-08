@@ -12,5 +12,6 @@
 // 公開インターフェース
 public protocol HTTPServerAdapter: HTTPServerAdapterProtocol {}
 
-extension FlyingFoxAdapter: HTTPServerAdapter {}
 extension HummingBirdV1Adapter: HTTPServerAdapter {}
+@available(iOS 17.0, *)
+extension HummingBirdV2Adapter: HTTPServerAdapter {}

@@ -26,7 +26,6 @@ jobs:
       checks: read
       statuses: read
       actions: read
-      metadata: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

@@ -56,6 +56,7 @@ final class BonjourService: ObservableObject {
         do {
             // TXTレコードを作成
             let txtRecord = createTXTRecord()
+            logger.info("TXTレコード内容確認: \(txtRecord)")
 
             // NWParametersを設定
             let parameters = NWParameters.tcp
@@ -68,11 +69,16 @@ final class BonjourService: ObservableObject {
                 domain: nil,
                 txtRecord: txtRecord
             )
+            logger.info("NWListener.Service作成: name=\(serviceName), type=_reuse-backup._tcp")
 
-            nwListener = try NWListener(using: parameters)
+            // 自動ポート割り当てを使用してNWListenerを作成
+            let bonjourPort = NWEndpoint.Port(rawValue: 0) ?? NWEndpoint.Port(8080)
+            nwListener = try NWListener(using: parameters, on: bonjourPort)
+            logger.info("NWListener作成完了: port=\(bonjourPort)")
 
             // Bonjourサービスを発信
             nwListener?.service = service
+            logger.info("NWListener.serviceにサービス設定完了")
 
             // 状態変更ハンドラーを設定
             nwListener?.stateUpdateHandler = { [weak self] state in
@@ -89,8 +95,7 @@ final class BonjourService: ObservableObject {
 
             // リスナーを開始
             nwListener?.start(queue: DispatchQueue.global(qos: .userInitiated))
-
-            logger.info("Bonjour service advertising initiated with auto-assigned port")
+            logger.info("NWListener開始完了")
 
         } catch {
             logger.error("Failed to start Bonjour service: \(error)")
@@ -160,7 +165,7 @@ final class BonjourService: ObservableObject {
         // ポート情報（クライアントが接続するため）
         let portString = String(port.rawValue)
         txtRecord["port"] = portString
-        
+
         logger.info("TXTレコード作成: version=1.0.0, status=\(status), capacity=\(capacity), device=\(UIDevice.current.model), port=\(portString)")
 
         return txtRecord
@@ -170,6 +175,12 @@ final class BonjourService: ObservableObject {
         switch state {
         case .ready:
             logger.info("Bonjour service is ready")
+            if let actualPort = nwListener?.port {
+                logger.info("Bonjourサービス開始成功: 実際のポート=\(actualPort)")
+            }
+            if let service = nwListener?.service {
+                logger.info("発信中のサービス: \(service)")
+            }
             isAdvertising = true
             lastError = nil
 
@@ -199,7 +210,7 @@ final class BonjourService: ObservableObject {
             lastError = nil
 
         default:
-            logger.info("Bonjour service state changed")
+            logger.info("Bonjour service state changed to: \(state)")
         }
     }
 }

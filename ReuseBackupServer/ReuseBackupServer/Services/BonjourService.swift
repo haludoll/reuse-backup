@@ -4,15 +4,14 @@ import Network
 import os.log
 import UIKit
 
-/// Network frameworkを使用したモダンなBonjourサービス発見機能を提供するサービス
-@available(iOS 13.0, *)
-final class BonjourService: ObservableObject {
+/// NetServiceを使用したBonjourサービス発見機能を提供するサービス
+final class BonjourService: NSObject, ObservableObject {
     // MARK: - Properties
 
     private let logger = Logger(subsystem: "com.haludoll.ReuseBackupServer", category: "BonjourService")
-    private var nwListener: NWListener?
+    private var netService: NetService?
     private let serviceName: String
-    private let port: NWEndpoint.Port
+    private let port: UInt16
 
     @Published private(set) var isAdvertising = false
     @Published private(set) var lastError: Error?
@@ -31,15 +30,26 @@ final class BonjourService: ObservableObject {
 
     // MARK: - Initialization
 
+    override init() {
+        self.port = 8080
+        
+        // デバイス名を使用してサービス名を生成
+        let deviceName = UIDevice.current.name
+        serviceName = "ReuseBackupServer-\(deviceName)"
+        
+        super.init()
+        logger.info("BonjourService initialized with service name: \(serviceName), port: \(port)")
+    }
+    
     init(port: UInt16) {
-        self.port = NWEndpoint.Port(rawValue: port) ?? NWEndpoint.Port(8080)
+        self.port = port
 
         // デバイス名を使用してサービス名を生成
         let deviceName = UIDevice.current.name
         serviceName = "ReuseBackupServer-\(deviceName)"
 
-        let logServiceName = serviceName
-        logger.info("BonjourService initialized with service name: \(logServiceName), port: \(port)")
+        super.init()
+        logger.info("BonjourService initialized with service name: \(serviceName), port: \(port)")
     }
 
     // MARK: - Public Methods
@@ -53,69 +63,44 @@ final class BonjourService: ObservableObject {
 
         logger.info("Starting Bonjour service advertising")
 
-        do {
-            // TXTレコードを作成
-            let txtRecord = createTXTRecord()
-            logger.info("TXTレコード内容確認: \(String(describing: txtRecord))")
+        // TXTレコードを作成
+        let txtRecordData = createTXTRecordData()
+        logger.info("TXTレコードデータサイズ: \(txtRecordData.count) bytes")
 
-            // NWParametersを設定
-            let parameters = NWParameters.tcp
-            parameters.includePeerToPeer = true
-
-            // Bonjourサービスを設定
-            let service = NWListener.Service(
-                name: serviceName,
-                type: "_reuse-backup._tcp",
-                domain: nil,
-                txtRecord: txtRecord
-            )
-            logger.info("NWListener.Service作成: name=\(self.serviceName), type=_reuse-backup._tcp")
-
-            // 自動ポート割り当てを使用してNWListenerを作成
-            let bonjourPort = NWEndpoint.Port(rawValue: 0) ?? NWEndpoint.Port(8080)
-            nwListener = try NWListener(using: parameters, on: bonjourPort)
-            logger.info("NWListener作成完了: port=\(String(describing: bonjourPort))")
-
-            // Bonjourサービスを発信
-            nwListener?.service = service
-            logger.info("NWListener.serviceにサービス設定完了")
-
-            // 状態変更ハンドラーを設定
-            nwListener?.stateUpdateHandler = { [weak self] state in
-                DispatchQueue.main.async {
-                    self?.handleStateUpdate(state)
-                }
-            }
-
-            // 新しい接続は即座にキャンセル（HTTPサーバーが別で処理）
-            nwListener?.newConnectionHandler = { connection in
-                // 接続を即座に拒否（HTTPサーバーが別で処理）
-                connection.cancel()
-            }
-
-            // リスナーを開始
-            nwListener?.start(queue: DispatchQueue.global(qos: .userInitiated))
-            logger.info("NWListener開始完了")
-
-        } catch {
-            logger.error("Failed to start Bonjour service: \(error)")
+        // NetServiceを作成
+        netService = NetService(domain: "", type: "_reuse-backup._tcp", name: serviceName, port: Int32(port))
+        
+        guard let service = netService else {
+            logger.error("Failed to create NetService")
             DispatchQueue.main.async {
-                self.lastError = error
+                self.lastError = NSError(domain: "BonjourService", code: -1, userInfo: [NSLocalizedDescriptionKey: "NetService作成に失敗"])
             }
+            return
         }
+
+        // TXTレコードを設定
+        service.setTXTRecord(txtRecordData)
+        logger.info("TXTレコード設定完了")
+
+        // デリゲートを設定
+        service.delegate = self
+        
+        // サービスの発信を開始
+        service.publish()
+        logger.info("NetService発信開始: name=\(serviceName), type=_reuse-backup._tcp, port=\(port)")
     }
 
     /// Bonjourサービスの発信を停止
     func stopAdvertising() {
-        guard let listener = nwListener else {
+        guard let service = netService else {
             logger.warning("Bonjour service is not running")
             return
         }
 
         logger.info("Stopping Bonjour service advertising")
 
-        listener.cancel()
-        nwListener = nil
+        service.stop()
+        netService = nil
 
         DispatchQueue.main.async {
             self.isAdvertising = false
@@ -126,91 +111,84 @@ final class BonjourService: ObservableObject {
 
     /// TXTレコードを更新
     func updateTXTRecord(status: String = "running", capacity: String = "available") {
-        guard let listener = nwListener, isAdvertising else {
+        guard let service = netService, isAdvertising else {
             logger.warning("Cannot update TXT record: service not advertising")
             return
         }
 
-        let txtRecord = createTXTRecord(status: status, capacity: capacity)
-
-        // 新しいサービス情報でリスナーを更新
-        let service = NWListener.Service(
-            name: serviceName,
-            type: "_reuse-backup._tcp",
-            domain: nil,
-            txtRecord: txtRecord
-        )
-
-        listener.service = service
+        let txtRecordData = createTXTRecordData(status: status, capacity: capacity)
+        service.setTXTRecord(txtRecordData)
         logger.info("TXT record updated with status: \(status), capacity: \(capacity)")
     }
 
     // MARK: - Private Methods
 
-    private func createTXTRecord(status: String = "running", capacity: String = "available") -> NWTXTRecord {
-        var txtRecord = NWTXTRecord()
+    private func createTXTRecordData(status: String = "running", capacity: String = "available") -> Data {
+        var txtDict: [String: Data] = [:]
 
         // バージョン情報
-        txtRecord["version"] = "1.0.0"
+        txtDict["version"] = "1.0.0".data(using: .utf8)
 
         // サーバー状態
-        txtRecord["status"] = status
+        txtDict["status"] = status.data(using: .utf8)
 
         // 容量状態
-        txtRecord["capacity"] = capacity
+        txtDict["capacity"] = capacity.data(using: .utf8)
 
         // デバイス情報
-        txtRecord["device"] = UIDevice.current.model
+        txtDict["device"] = UIDevice.current.model.data(using: .utf8)
 
         // ポート情報（クライアントが接続するため）
-        let portString = String(port.rawValue)
-        txtRecord["port"] = portString
+        let portString = String(port)
+        txtDict["port"] = portString.data(using: .utf8)
 
         logger.info("TXTレコード作成: version=1.0.0, status=\(status), capacity=\(capacity), device=\(UIDevice.current.model), port=\(portString)")
 
-        return txtRecord
+        return NetService.data(fromTXTRecord: txtDict)
     }
 
-    private func handleStateUpdate(_ state: NWListener.State) {
-        switch state {
-        case .ready:
-            logger.info("Bonjour service is ready")
-            if let actualPort = nwListener?.port {
-                logger.info("Bonjourサービス開始成功: 実際のポート=\(String(describing: actualPort))")
-            }
-            if let service = nwListener?.service {
-                logger.info("発信中のサービス: \(String(describing: service))")
-            }
-            isAdvertising = true
-            lastError = nil
+}
 
-        case let .waiting(error):
-            switch error {
-            case NWError.dns(DNSServiceErrorType(kDNSServiceErr_NoAuth)):
-                logger.warning("Bonjour service waiting: Local network permission required. Please check app permissions in Settings.")
-            default:
-                logger.warning("Bonjour service is waiting: \(error)")
+// MARK: - NetServiceDelegate
+
+extension BonjourService: NetServiceDelegate {
+    func netServiceDidPublish(_ sender: NetService) {
+        logger.info("Bonjour service published successfully: \(sender.name)")
+        DispatchQueue.main.async {
+            self.isAdvertising = true
+            self.lastError = nil
+        }
+    }
+    
+    func netService(_ sender: NetService, didNotPublish errorDict: [String : NSNumber]) {
+        logger.error("Bonjour service failed to publish: \(errorDict)")
+        
+        // エラーコードの詳細をログ出力
+        for (key, value) in errorDict {
+            logger.error("エラー詳細: \(key) = \(value)")
+            if key == NSNetServicesErrorCode.rawValue {
+                if let errorCode = NetServiceErrorCode(rawValue: value.intValue) {
+                    logger.error("NetServiceErrorCode: \(errorCode)")
+                    
+                    // NoAuth エラーの特別な処理
+                    if errorCode == .noAuthError {
+                        logger.error("Local network permission required")
+                    }
+                }
             }
-            isAdvertising = false
-            lastError = error
-
-        case let .failed(error):
-            switch error {
-            case NWError.dns(DNSServiceErrorType(kDNSServiceErr_NoAuth)):
-                logger.error("Bonjour service failed: No authorization for local network access. User needs to grant permission in Settings.")
-            default:
-                logger.error("Bonjour service failed: \(error)")
-            }
-            isAdvertising = false
-            lastError = error
-
-        case .cancelled:
-            logger.info("Bonjour service cancelled")
-            isAdvertising = false
-            lastError = nil
-
-        default:
-            logger.info("Bonjour service state changed to: \(String(describing: state))")
+        }
+        
+        let error = NSError(domain: "BonjourService", code: -1, userInfo: errorDict as [String: Any])
+        DispatchQueue.main.async {
+            self.isAdvertising = false
+            self.lastError = error
+        }
+    }
+    
+    func netServiceDidStop(_ sender: NetService) {
+        logger.info("Bonjour service stopped: \(sender.name)")
+        DispatchQueue.main.async {
+            self.isAdvertising = false
         }
     }
 }

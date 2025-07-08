@@ -4,7 +4,7 @@ import Network
 import os.log
 import UIKit
 
-/// NetServiceを使用したBonjourサービス発見機能を提供するサービス
+/// NetServiceを使用したBonjourサービス発見機能を提供するサービス（HTTPS対応）
 final class BonjourService: NSObject, ObservableObject {
     // MARK: - Properties
 
@@ -31,7 +31,7 @@ final class BonjourService: NSObject, ObservableObject {
     // MARK: - Initialization
 
     override init() {
-        port = 8080
+        port = 8443
 
         // デバイス名を使用してサービス名を生成
         let deviceName = UIDevice.current.name
@@ -119,7 +119,7 @@ final class BonjourService: NSObject, ObservableObject {
 
         let txtRecordData = createTXTRecordData(status: status, capacity: capacity)
         service.setTXTRecord(txtRecordData)
-        logger.info("TXT record updated with status: \(status), capacity: \(capacity)")
+        logger.info("TXT record updated with status: \(status), capacity: \(capacity), protocol: https")
     }
 
     // MARK: - Private Methods
@@ -142,6 +142,12 @@ final class BonjourService: NSObject, ObservableObject {
         // ポート情報（クライアントが接続するため）
         let portString = String(port)
         txtDict["port"] = portString.data(using: .utf8)
+
+        // HTTPS対応の明示
+        txtDict["protocol"] = "https".data(using: .utf8)
+
+        // TLSステータス
+        txtDict["tls"] = "enabled".data(using: .utf8)
 
         return NetService.data(fromTXTRecord: txtDict)
     }

@@ -3,9 +3,9 @@ import HTTPServerAdapters
 import HTTPTypes
 import OSLog
 
-/// HTTP サーバー機能を提供するサービスクラス
+/// HTTPS サーバー機能を提供するサービスクラス
 ///
-/// HTTPサーバーファクトリーを使用してHTTPサーバー機能を提供します。
+/// HTTPサーバーファクトリーを使用してHTTPSサーバー機能を提供します。
 /// 主な機能：
 /// - `/api/status` - サーバーステータス情報の取得
 /// - `/api/message` - メッセージ受信API（POST）
@@ -57,19 +57,19 @@ final class HTTPServerService: HTTPServerServiceProtocol {
     ///
     /// 指定されたポートとファクトリーでサーバーを初期化します。
     /// - Parameters:
-    ///   - port: サーバーが使用するポート番号
+    ///   - port: サーバーが使用するポート番号（デフォルト: 8443 HTTPS）
     ///   - serverFactory: HTTPサーバーを作成するファクトリー
-    init(port: UInt16 = 8080, serverFactory: HTTPServerFactory = HTTPAdaptersServerFactory()) {
+    init(port: UInt16 = 8443, serverFactory: HTTPServerFactory = HTTPAdaptersServerFactory()) {
         self.port = port
         self.serverFactory = serverFactory
-        logger.info("HTTPServerService initialized for port \(port)")
+        logger.info("HTTPServerService initialized for HTTPS port \(port)")
     }
 
     // MARK: - Server Control
 
-    /// HTTPサーバーを開始
+    /// HTTPSサーバーを開始
     ///
-    /// サーバーファクトリーを使用してHTTPサーバーを開始し、ルートとAPIエンドポイントを設定します。
+    /// サーバーファクトリーを使用してHTTPSサーバーを開始し、ルートとAPIエンドポイントを設定します。
     /// サーバーは別タスクで非同期実行され、即座に制御が戻ります。
     /// - Throws: サーバー開始に失敗した場合のエラー
     func start() async throws {
@@ -79,7 +79,7 @@ final class HTTPServerService: HTTPServerServiceProtocol {
         }
 
         let port = port
-        logger.info("Starting HTTP server on port \(port)")
+        logger.info("Starting HTTPS server on port \(port)")
 
         let server = serverFactory.createServer(port: port)
         let currentStartTime = Date()
@@ -108,23 +108,23 @@ final class HTTPServerService: HTTPServerServiceProtocol {
                 // Bonjourサービスも停止
                 self.bonjourService?.stopAdvertising()
                 self.bonjourService = nil
-                logger.error("HTTP server stopped with error: \(error.localizedDescription)")
+                logger.error("HTTPS server stopped with error: \(error.localizedDescription)")
             }
         }
 
-        logger.info("HTTP server started successfully on port \(port) with Bonjour advertising")
+        logger.info("HTTPS server started successfully on port \(port) with Bonjour advertising")
     }
 
-    /// HTTPサーバーを停止
+    /// HTTPSサーバーを停止
     ///
-    /// 実行中のHTTPサーバーを停止し、関連するタスクもキャンセルします。
+    /// 実行中のHTTPSサーバーを停止し、関連するタスクもキャンセルします。
     func stop() async {
         guard let server else {
             logger.warning("Server is not running")
             return
         }
 
-        logger.info("Stopping HTTP server")
+        logger.info("Stopping HTTPS server")
 
         serverTask?.cancel()
         await server.stop()
@@ -137,7 +137,7 @@ final class HTTPServerService: HTTPServerServiceProtocol {
         serverTask = nil
         startTime = nil
 
-        logger.info("HTTP server and Bonjour service stopped")
+        logger.info("HTTPS server and Bonjour service stopped")
     }
 
     /// サーバーが実行中かどうかを返す

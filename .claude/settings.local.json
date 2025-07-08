@@ -38,6 +38,8 @@
       "Bash(swift package:*)",
       "Bash(git rm:*)",
       "WebFetch(domain:github.com)",
+      "mcp__github__list_pull_requests",
+      "Bash(cat:*)",
       "Bash(git worktree:*)",
       "Bash(chmod:*)"
     ],

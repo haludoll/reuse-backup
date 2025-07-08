@@ -20,6 +20,8 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-http-types", from: "1.0.0"),
         // HummingBird v1.x for HTTP server functionality (iOS 15+ compatible)
         .package(url: "https://github.com/hummingbird-project/hummingbird", from: "1.0.0"),
+        // Swift NIO SSL for TLS/HTTPS support
+        .package(url: "https://github.com/apple/swift-nio-ssl", from: "2.0.0"),
     ],
     targets: [
         .target(
@@ -27,6 +29,7 @@ let package = Package(
             dependencies: [
                 .product(name: "HTTPTypes", package: "swift-http-types"),
                 .product(name: "Hummingbird", package: "hummingbird"),
+                .product(name: "NIOSSL", package: "swift-nio-ssl"),
             ]
         ),
         .testTarget(

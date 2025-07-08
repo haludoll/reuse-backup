@@ -3,15 +3,25 @@ import HTTPTypes
 
 #if canImport(Hummingbird) && compiler(>=5.9)
 import Hummingbird
+import NIOSSL
 
 /// HummingBird v1.x サーバーをHTTPServerAdapterProtocolに適合させるアダプター
 public final class HummingBirdV1Adapter: HTTPServerAdapterProtocol {
     public let port: UInt16
     
     private var routes: [(HTTPRouteInfo, HTTPHandlerAdapter)] = []
+    private let tlsCertificateManager: TLSCertificateManager
+    private let enableTLS: Bool
     
-    public init(port: UInt16) {
+    /// イニシャライザ
+    /// - Parameters:
+    ///   - port: サーバーポート番号（デフォルト: 8443 for HTTPS）
+    ///   - enableTLS: TLS有効化フラグ（デフォルト: true）
+    ///   - certificateDirectory: 証明書保存ディレクトリ（nilの場合はデフォルト）
+    public init(port: UInt16 = 8443, enableTLS: Bool = true, certificateDirectory: URL? = nil) {
         self.port = port
+        self.enableTLS = enableTLS
+        self.tlsCertificateManager = TLSCertificateManager(certificateDirectory: certificateDirectory)
     }
     
     public func appendRoute(_ route: HTTPRouteInfo, to handler: HTTPHandlerAdapter) async {
@@ -19,7 +29,31 @@ public final class HummingBirdV1Adapter: HTTPServerAdapterProtocol {
     }
     
     public func run() async throws {
-        let app = HBApplication(configuration: .init(address: .hostname("0.0.0.0", port: Int(port))))
+        let app: HBApplication
+        
+        if enableTLS {
+            // TLS設定を取得
+            let tlsConfiguration = try tlsCertificateManager.getTLSConfiguration()
+            
+            // HTTPS用のHummingBird設定
+            let configuration = HBApplication.Configuration(
+                address: .hostname("0.0.0.0", port: Int(port)),
+                serverName: "ReuseBackup-HTTPS",
+                tlsConfiguration: tlsConfiguration
+            )
+            
+            app = HBApplication(configuration: configuration)
+            print("✅ HTTPS server starting on port \(port) with TLS enabled")
+        } else {
+            // HTTP用のHummingBird設定
+            let configuration = HBApplication.Configuration(
+                address: .hostname("0.0.0.0", port: Int(port)),
+                serverName: "ReuseBackup-HTTP"
+            )
+            
+            app = HBApplication(configuration: configuration)
+            print("⚠️  HTTP server starting on port \(port) without TLS")
+        }
         
         // 登録されたルートをHummingBird v1ルーターに追加
         for (route, handler) in routes {
@@ -46,8 +80,21 @@ public final class HummingBirdV1Adapter: HTTPServerAdapterProtocol {
             }
         }
         
-        try app.start()
-        await app.asyncWait()
+        do {
+            try app.start()
+            await app.asyncWait()
+        } catch {
+            if enableTLS {
+                print("❌ HTTPS server failed to start: \(error)")
+                // TLS関連のエラーメッセージを追加
+                if let tlsError = error as? TLSCertificateManager.CertificateError {
+                    print("🔒 TLS Certificate Error: \(tlsError.description)")
+                }
+            } else {
+                print("❌ HTTP server failed to start: \(error)")
+            }
+            throw error
+        }
     }
     
     public func stop() async {
@@ -137,9 +184,11 @@ private struct HummingBirdV1HandlerWrapper: Sendable {
 /// HummingBird v1が利用できない場合のプレースホルダー実装
 public final class HummingBirdV1Adapter: HTTPServerAdapterProtocol {
     public let port: UInt16
+    private let enableTLS: Bool
     
-    public init(port: UInt16) {
+    public init(port: UInt16 = 8443, enableTLS: Bool = true, certificateDirectory: URL? = nil) {
         self.port = port
+        self.enableTLS = enableTLS
         print("Warning: HummingBird v1.x is not available. Using placeholder implementation.")
     }
     

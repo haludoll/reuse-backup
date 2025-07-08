@@ -423,7 +423,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ReuseBackupClient/Info.plist;
-				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "  バックアップサーバーを発見して接続するため、ローカルネットワークアクセスが必要です。同じWi-Fiネット\n  ワーク上のサーバーを検索し、安全にデータをバックアップします。";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "このアプリがローカルネットワーク上のバックアップサーバーを発見・接続するため、ローカルネットワークアクセスが必要です。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -458,7 +458,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ReuseBackupClient/Info.plist;
-				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "  バックアップサーバーを発見して接続するため、ローカルネットワークアクセスが必要です。同じWi-Fiネット\n  ワーク上のサーバーを検索し、安全にデータをバックアップします。";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "このアプリがローカルネットワーク上のバックアップサーバーを発見・接続するため、ローカルネットワークアクセスが必要です。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

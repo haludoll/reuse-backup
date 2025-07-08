@@ -138,6 +138,9 @@ final class BonjourService: NSObject, ObservableObject {
         // ポート情報（クライアントが接続するため）
         let portString = String(port)
         txtDict["port"] = portString.data(using: .utf8)
+        
+        // デバッグ: TXTレコードのポート情報をログ出力
+        logger.info("🔍 [DEBUG] TXTレコードポート: \(portString)")
 
         return NetService.data(fromTXTRecord: txtDict)
     }

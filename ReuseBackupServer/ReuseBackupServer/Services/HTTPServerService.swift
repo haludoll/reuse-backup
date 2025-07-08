@@ -83,6 +83,9 @@ final class HTTPServerService: HTTPServerServiceProtocol {
         self.server = server
         startTime = currentStartTime
 
+        // デバッグ: ポート情報をログ出力
+        logger.info("🔍 [DEBUG] HTTPサーバーポート: \(port)")
+        
         // Bonjourサービスを開始
         bonjourService = BonjourService(port: port)
         bonjourService?.startAdvertising()

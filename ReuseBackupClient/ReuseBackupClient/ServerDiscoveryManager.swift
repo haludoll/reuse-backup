@@ -151,17 +151,23 @@ class ServerDiscoveryManager: ObservableObject {
     private func addDiscoveredServer(name: String, type: String, domain: String, txtRecord: NWTXTRecord?) {
         // TXTレコードからHTTPポート情報を取得
         var httpPort = 8080 // デフォルト値
+        
+        // デバッグ: TXTレコードの内容をログ出力
         if let txtRecord = txtRecord {
+            print("🔍 [DEBUG] TXTレコード取得成功: \(txtRecord.count)個のエントリ")
             for (key, value) in txtRecord {
+                print("🔍 [DEBUG] TXTエントリ: \(key) = \(value)")
                 if key == "port" {
                     switch value {
                     case .data(let data):
                         if let portString = String(data: data, encoding: .utf8), let port = Int(portString) {
                             httpPort = port
+                            print("🔍 [DEBUG] ポート解析成功: \(httpPort)")
                         }
                     case .string(let portString):
                         if let port = Int(portString) {
                             httpPort = port
+                            print("🔍 [DEBUG] ポート解析成功: \(httpPort)")
                         }
                     case .none,
                          .empty:
@@ -171,11 +177,17 @@ class ServerDiscoveryManager: ObservableObject {
                     }
                 }
             }
+        } else {
+            print("🔍 [DEBUG] TXTレコードなし - デフォルトポート8080を使用")
         }
         
-        // mDNSサービス名を使用してホスト名を構築
-        let serverHost = "\(name).\(type)\(domain)"
+        // Bonjourサービス名からホスト名を構築
+        let serverHost = "\(name).local"
         let serverEndpoint = "http://\(serverHost):\(httpPort)"
+        
+        // デバッグ: 接続情報をログ出力
+        print("🔍 [DEBUG] 接続先: \(serverEndpoint)")
+        print("🔍 [DEBUG] サービス名: \(name), ポート: \(httpPort)")
         
         let server = DiscoveredServer(
             name: name,

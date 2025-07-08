@@ -1,6 +1,5 @@
 import Foundation
 import HTTPServerAdaptersCore
-import HTTPServerAdaptersV2
 
 /// HTTPサーバーアダプターを作成するファクトリー
 ///

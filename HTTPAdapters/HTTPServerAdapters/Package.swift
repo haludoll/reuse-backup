@@ -18,15 +18,15 @@ let package = Package(
     dependencies: [
         // Core shared interfaces
         .package(path: "../HTTPServerAdaptersCore"),
-        // Only include V2 to avoid dependency conflicts
-        .package(path: "../HTTPServerAdaptersV2"),
+        // HummingBird v2.x for iOS 17+ (conditionally imported)
+        .package(url: "https://github.com/hummingbird-project/hummingbird", from: "2.0.0"),
     ],
     targets: [
         .target(
             name: "HTTPServerAdapters",
             dependencies: [
                 .product(name: "HTTPServerAdaptersCore", package: "HTTPServerAdaptersCore"),
-                .product(name: "HTTPServerAdaptersV2", package: "HTTPServerAdaptersV2"),
+                .product(name: "Hummingbird", package: "hummingbird"),
             ]
         ),
         .testTarget(

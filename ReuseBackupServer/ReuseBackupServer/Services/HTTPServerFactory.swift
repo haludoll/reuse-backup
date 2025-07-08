@@ -10,7 +10,14 @@ protocol HTTPServerFactory: Sendable {
     func createServer(port: UInt16) -> HTTPServerProtocol
 }
 
-/// FlyingFoxのHTTPServerを作成するファクトリー実装
+/// HummingBirdのHTTPServerを作成するファクトリー実装
+final class HummingBirdHTTPServerFactory: HTTPServerFactory {
+    func createServer(port: UInt16) -> HTTPServerProtocol {
+        HummingBirdHTTPServerWrapper(port: port)
+    }
+}
+
+/// FlyingFoxのHTTPServerを作成するファクトリー実装（下位互換性のため保持）
 final class FlyingFoxHTTPServerFactory: HTTPServerFactory {
     func createServer(port: UInt16) -> HTTPServerProtocol {
         FlyingFoxHTTPServerWrapper(port: port)

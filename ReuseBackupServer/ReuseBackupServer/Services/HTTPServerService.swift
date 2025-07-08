@@ -58,7 +58,7 @@ final class HTTPServerService: HTTPServerServiceProtocol {
     /// - Parameters:
     ///   - port: サーバーが使用するポート番号
     ///   - serverFactory: HTTPサーバーを作成するファクトリー
-    init(port: UInt16 = 8080, serverFactory: HTTPServerFactory = FlyingFoxHTTPServerFactory()) {
+    init(port: UInt16 = 8080, serverFactory: HTTPServerFactory = HummingBirdHTTPServerFactory()) {
         self.port = port
         self.serverFactory = serverFactory
         logger.info("HTTPServerService initialized for port \(port)")

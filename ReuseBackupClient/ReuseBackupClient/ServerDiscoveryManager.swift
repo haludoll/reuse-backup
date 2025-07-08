@@ -452,9 +452,10 @@ class NetServiceTXTResolver: NSObject, NetServiceDelegate {
                     nwTxtRecord[keyString] = stringValue
                     print("📄 TXTエントリ追加: \(keyString) = \(stringValue)")
                 } else {
-                    // バイナリデータの場合は直接設定
-                    nwTxtRecord[keyString] = dataValue
-                    print("📄 TXTエントリ追加 (binary): \(keyString) = \(dataValue.count) bytes")
+                    // バイナリデータの場合は可能な範囲で文字列化して設定
+                    let binaryString = dataValue.map { String(format: "%02x", $0) }.joined()
+                    nwTxtRecord[keyString] = binaryString
+                    print("📄 TXTエントリ追加 (binary as hex): \(keyString) = \(binaryString)")
                 }
             }
         }

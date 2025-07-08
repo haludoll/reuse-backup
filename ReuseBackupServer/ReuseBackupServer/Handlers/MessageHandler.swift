@@ -1,26 +1,29 @@
 import APISharedModels
-import FlyingFox
 import Foundation
+import HTTPServerAdapters
+import HTTPTypes
 
-struct MessageHandler: HTTPHandler {
+struct MessageHandler: HTTPHandlerAdapter {
     private let messageManager: MessageManager
 
     init(messageManager: MessageManager) {
         self.messageManager = messageManager
     }
 
-    func handleRequest(_ request: HTTPRequest) async throws -> HTTPResponse {
+    func handleRequest(_ request: HTTPRequestInfo) async throws -> HTTPResponseInfo {
         switch request.method {
-        case .POST:
+        case .post:
             try await handlePost(request)
         default:
-            HTTPResponse(statusCode: .methodNotAllowed)
+            HTTPResponseInfo(status: .methodNotAllowed)
         }
     }
 
-    private func handlePost(_ request: HTTPRequest) async throws -> HTTPResponse {
+    private func handlePost(_ request: HTTPRequestInfo) async throws -> HTTPResponseInfo {
         do {
-            let body = try await request.bodyData
+            guard let body = request.body else {
+                throw NSError(domain: "MessageHandler", code: 400, userInfo: [NSLocalizedDescriptionKey: "Missing request body"])
+            }
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
             let messageRequest = try decoder.decode(Components.Schemas.MessageRequest.self, from: body)
@@ -36,9 +39,11 @@ struct MessageHandler: HTTPHandler {
             let encoder = JSONEncoder()
             encoder.dateEncodingStrategy = .iso8601
             let jsonData = try encoder.encode(response)
-            return HTTPResponse(
-                statusCode: .ok,
-                headers: [.contentType: "application/json"],
+            var headers = HTTPFields()
+            headers[.contentType] = "application/json"
+            return HTTPResponseInfo(
+                status: .ok,
+                headerFields: headers,
                 body: jsonData
             )
         } catch {
@@ -51,9 +56,11 @@ struct MessageHandler: HTTPHandler {
             let encoder = JSONEncoder()
             encoder.dateEncodingStrategy = .iso8601
             let jsonData = try encoder.encode(errorResponse)
-            return HTTPResponse(
-                statusCode: .badRequest,
-                headers: [.contentType: "application/json"],
+            var headers = HTTPFields()
+            headers[.contentType] = "application/json"
+            return HTTPResponseInfo(
+                status: .badRequest,
+                headerFields: headers,
                 body: jsonData
             )
         }

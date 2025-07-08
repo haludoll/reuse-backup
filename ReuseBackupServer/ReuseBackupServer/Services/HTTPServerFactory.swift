@@ -10,9 +10,9 @@ protocol HTTPServerFactory: Sendable {
     func createServer(port: UInt16) -> HTTPServerProtocol
 }
 
-/// FlyingFoxのHTTPServerを作成するファクトリー実装
-final class FlyingFoxHTTPServerFactory: HTTPServerFactory {
+/// HTTPAdaptersのHTTPServerを作成するファクトリー実装
+final class HTTPAdaptersServerFactory: HTTPServerFactory {
     func createServer(port: UInt16) -> HTTPServerProtocol {
-        FlyingFoxHTTPServerWrapper(port: port)
+        HTTPAdaptersServerWrapper(port: port)
     }
 }

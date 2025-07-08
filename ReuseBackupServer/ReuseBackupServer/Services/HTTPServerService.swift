@@ -1,5 +1,6 @@
-import FlyingFox
 import Foundation
+import HTTPServerAdapters
+import HTTPTypes
 import OSLog
 
 /// HTTP サーバー機能を提供するサービスクラス
@@ -58,7 +59,7 @@ final class HTTPServerService: HTTPServerServiceProtocol {
     /// - Parameters:
     ///   - port: サーバーが使用するポート番号
     ///   - serverFactory: HTTPサーバーを作成するファクトリー
-    init(port: UInt16 = 8080, serverFactory: HTTPServerFactory = FlyingFoxHTTPServerFactory()) {
+    init(port: UInt16 = 8080, serverFactory: HTTPServerFactory = HTTPAdaptersServerFactory()) {
         self.port = port
         self.serverFactory = serverFactory
         logger.info("HTTPServerService initialized for port \(port)")
@@ -86,8 +87,8 @@ final class HTTPServerService: HTTPServerServiceProtocol {
         let statusHandler = StatusHandler(port: port, startTime: currentStartTime)
         let messageHandler = MessageHandler(messageManager: messageManager)
 
-        await server.appendRoute(.init(method: .GET, path: "/api/status"), to: statusHandler)
-        await server.appendRoute(.init(method: .POST, path: "/api/message"), to: messageHandler)
+        await server.appendRoute(HTTPRouteInfo(method: .get, path: "/api/status"), to: statusHandler)
+        await server.appendRoute(HTTPRouteInfo(method: .post, path: "/api/message"), to: messageHandler)
 
         // server.run()は永続的にawaitするため、先にインスタンスを保存
         self.server = server

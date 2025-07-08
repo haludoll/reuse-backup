@@ -1,10 +1,11 @@
 import APISharedModels
-import FlyingFox
 import Foundation
+import HTTPServerAdapters
+import HTTPTypes
 import SystemConfiguration
 
 /// ステータスエンドポイント（/api/status）のハンドラー
-final class StatusHandler: HTTPHandler {
+final class StatusHandler: HTTPHandlerAdapter {
     private let port: UInt16
     private let startTime: Date
 
@@ -13,7 +14,7 @@ final class StatusHandler: HTTPHandler {
         self.startTime = startTime
     }
 
-    func handleRequest(_: HTTPRequest) async throws -> HTTPResponse {
+    func handleRequest(_: HTTPRequestInfo) async throws -> HTTPResponseInfo {
         do {
             let uptime = Date().timeIntervalSince(startTime)
             let healthCheck = performHealthCheck()
@@ -29,9 +30,11 @@ final class StatusHandler: HTTPHandler {
                 let encoder = JSONEncoder()
                 encoder.dateEncodingStrategy = .iso8601
                 let jsonData = try encoder.encode(statusResponse)
-                return HTTPResponse(
-                    statusCode: .ok,
-                    headers: [.contentType: "application/json"],
+                var headers = HTTPFields()
+                headers[.contentType] = "application/json"
+                return HTTPResponseInfo(
+                    status: .ok,
+                    headerFields: headers,
                     body: jsonData
                 )
             } else {
@@ -46,9 +49,11 @@ final class StatusHandler: HTTPHandler {
                 let encoder = JSONEncoder()
                 encoder.dateEncodingStrategy = .iso8601
                 let jsonData = try encoder.encode(statusResponse)
-                return HTTPResponse(
-                    statusCode: .ok, // ステータス情報は返せるので200
-                    headers: [.contentType: "application/json"],
+                var headers = HTTPFields()
+                headers[.contentType] = "application/json"
+                return HTTPResponseInfo(
+                    status: .ok, // ステータス情報は返せるので200
+                    headerFields: headers,
                     body: jsonData
                 )
             }
@@ -63,9 +68,11 @@ final class StatusHandler: HTTPHandler {
             let encoder = JSONEncoder()
             encoder.dateEncodingStrategy = .iso8601
             let jsonData = try encoder.encode(errorResponse)
-            return HTTPResponse(
-                statusCode: .internalServerError,
-                headers: [.contentType: "application/json"],
+            var headers = HTTPFields()
+            headers[.contentType] = "application/json"
+            return HTTPResponseInfo(
+                status: .internalServerError,
+                headerFields: headers,
                 body: jsonData
             )
         }

@@ -3,6 +3,7 @@ import HTTPTypes
 
 #if canImport(Hummingbird) && compiler(>=5.9)
 import Hummingbird
+import HummingbirdTLS
 import NIOSSL
 
 /// HummingBird v1.x サーバーをHTTPServerAdapterProtocolに適合させるアダプター
@@ -38,11 +39,13 @@ public final class HummingBirdV1Adapter: HTTPServerAdapterProtocol {
             // HTTPS用のHummingBird設定
             let configuration = HBApplication.Configuration(
                 address: .hostname("0.0.0.0", port: Int(port)),
-                serverName: "ReuseBackup-HTTPS",
-                tlsConfiguration: tlsConfiguration
+                serverName: "ReuseBackup-HTTPS"
             )
             
             app = HBApplication(configuration: configuration)
+            
+            // TLS設定を適用
+            try app.server.addTLS(tlsConfiguration: tlsConfiguration)
             print("✅ HTTPS server starting on port \(port) with TLS enabled")
         } else {
             // HTTP用のHummingBird設定

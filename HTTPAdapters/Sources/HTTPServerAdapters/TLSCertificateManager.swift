@@ -57,8 +57,8 @@ public final class TLSCertificateManager: Sendable {
         let privateKey = try getPrivateKey()
         
         return TLSConfiguration.makeServerConfiguration(
-            certificateChain: certificateChain,
-            privateKey: privateKey
+            certificateChain: certificateChain.map { .certificate($0) },
+            privateKey: .privateKey(privateKey)
         )
     }
     

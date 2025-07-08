@@ -26,15 +26,15 @@ class ServerDiscoveryManager: ObservableObject {
         // ローカルホストも追加
         addLocalHostServer()
         
-        // 5秒後に検索終了
+        // 15秒後に検索終了（NetServiceの解決時間を確保）
         Task {
-            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            try? await Task.sleep(nanoseconds: 15_000_000_000)
             stopDiscovery()
         }
     }
     
     func stopDiscovery() {
-        print("🛑 Stopping Bonjour discovery (5-second timeout reached)")
+        print("🛑 Stopping Bonjour discovery (15-second timeout reached)")
         isSearching = false
         browser?.cancel()
         browser = nil
@@ -270,11 +270,13 @@ class ServerDiscoveryManager: ObservableObject {
         
         // 解決を開始
         netService.delegate = resolver
+        print("🔧 NetService.delegateを設定: \(resolver)")
         netService.resolve(withTimeout: 5.0)
-        print("📡 NetService解決開始: \(name)")
+        print("📡 NetService解決開始: \(name), timeout=5.0秒")
+        print("🔍 NetService詳細: name=\(netService.name), type=\(netService.type), domain=\(netService.domain)")
         
-        // 8秒でタイムアウト（Bonjourの5秒タイムアウトより後に実行）
-        DispatchQueue.main.asyncAfter(deadline: .now() + 8.0) {
+        // 7秒でタイムアウト（Discovery全体のタイムアウトより前に実行）
+        DispatchQueue.main.asyncAfter(deadline: .now() + 7.0) {
             if self.netServiceResolvers.contains(where: { $0 === netService }) {
                 print("⏰ NetService解決タイムアウト: \(name)")
                 self.addDiscoveredServer(name: name, type: type, domain: domain, txtRecord: nil)
@@ -430,10 +432,13 @@ class NetServiceTXTResolver: NSObject, NetServiceDelegate {
     
     func netServiceDidResolveAddress(_ sender: NetService) {
         print("📋 NetService解決成功: \(serviceName)")
+        print("📋 NetService詳細: domain=\(sender.domain), type=\(sender.type), name=\(sender.name)")
+        print("📋 NetService addresses: \(sender.addresses?.count ?? 0) addresses")
         
         // TXTレコードデータを取得
         if let txtData = sender.txtRecordData() {
             print("📄 TXTレコードデータ取得成功: \(txtData.count) bytes")
+            print("📄 Raw TXT data: \(txtData.map { String(format: "%02x", $0) }.joined())")
             
             // NSDataからNWTXTRecordに変換
             let txtRecord = convertToNWTXTRecord(from: txtData)
@@ -447,6 +452,15 @@ class NetServiceTXTResolver: NSObject, NetServiceDelegate {
     
     func netService(_ sender: NetService, didNotResolve errorDict: [String : NSNumber]) {
         print("❌ NetService解決失敗: \(serviceName), エラー: \(errorDict)")
+        
+        // エラーコードの詳細をログ出力
+        for (key, value) in errorDict {
+            print("🔍 エラー詳細: \(key) = \(value)")
+            if key == NSNetServicesErrorCode.rawValue, let errorCode = NetServiceErrorCode(rawValue: value.intValue) {
+                print("🔍 NetServiceErrorCode: \(errorCode)")
+            }
+        }
+        
         let error = NSError(domain: "NetServiceError", code: -1, userInfo: errorDict as [String: Any])
         onFailed(error)
     }

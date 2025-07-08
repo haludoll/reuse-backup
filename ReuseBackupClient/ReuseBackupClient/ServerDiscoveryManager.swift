@@ -25,8 +25,8 @@ class ServerDiscoveryManager: ObservableObject {
         startBonjourDiscovery()
         
         // ローカルホストも追加
-        addLocalHostServer()
-        
+        //addLocalHostServer()
+
         // 15秒後に検索終了（NetServiceの解決時間を確保）
         Task {
             try? await Task.sleep(nanoseconds: 15_000_000_000)
@@ -139,7 +139,7 @@ class ServerDiscoveryManager: ObservableObject {
                             break
                         }
                         
-                        self.addDiscoveredServer(name: name, type: type, domain: domain, txtRecord: txtRecord)
+                        self.addDiscoveredServer(name: name, type: type, domain: domain, txtRecord: txtRecord, ipAddress: nil)
                     }
                 }
             }
@@ -148,7 +148,7 @@ class ServerDiscoveryManager: ObservableObject {
         browser?.start(queue: .main)
     }
     
-    private func addDiscoveredServer(name: String, type: String, domain: String, txtRecord: NWTXTRecord?) {
+    private func addDiscoveredServer(name: String, type: String, domain: String, txtRecord: NWTXTRecord?, ipAddress: String? = nil) {
         // TXTレコードからHTTPポート情報を取得
         var httpPort = 8080 // デフォルト値
         
@@ -181,8 +181,16 @@ class ServerDiscoveryManager: ObservableObject {
             print("🔍 [DEBUG] TXTレコードなし - デフォルトポート8080を使用")
         }
         
-        // Bonjourサービス名からホスト名を構築
-        let serverHost = "\(name).local"
+        // ホスト名を構築（IPアドレスがある場合は優先）
+        let serverHost: String
+        if let ipAddress = ipAddress {
+            serverHost = ipAddress
+            print("🔍 [DEBUG] IPアドレス使用: \(ipAddress)")
+        } else {
+            serverHost = "\(name).local"
+            print("🔍 [DEBUG] mDNSホスト名使用: \(serverHost)")
+        }
+        
         let serverEndpoint = "http://\(serverHost):\(httpPort)"
         
         // デバッグ: 接続情報をログ出力
@@ -212,15 +220,15 @@ class ServerDiscoveryManager: ObservableObject {
             serviceName: name,
             serviceType: type,
             serviceDomain: domain,
-            onResolved: { [weak self] txtRecord in
+            onResolved: { [weak self] txtRecord, ipAddress in
                 DispatchQueue.main.async {
-                    self?.addDiscoveredServer(name: name, type: type, domain: domain, txtRecord: txtRecord)
+                    self?.addDiscoveredServer(name: name, type: type, domain: domain, txtRecord: txtRecord, ipAddress: ipAddress)
                     self?.cleanupNetServiceResolver(netService)
                 }
             },
             onFailed: { [weak self] error in
                 DispatchQueue.main.async {
-                    self?.addDiscoveredServer(name: name, type: type, domain: domain, txtRecord: nil)
+                    self?.addDiscoveredServer(name: name, type: type, domain: domain, txtRecord: nil, ipAddress: nil)
                     self?.cleanupNetServiceResolver(netService)
                 }
             }
@@ -236,7 +244,7 @@ class ServerDiscoveryManager: ObservableObject {
         // 7秒でタイムアウト（Discovery全体のタイムアウトより前に実行）
         DispatchQueue.main.asyncAfter(deadline: .now() + 7.0) {
             if self.netServiceResolvers.contains(where: { $0 === netService }) {
-                self.addDiscoveredServer(name: name, type: type, domain: domain, txtRecord: nil)
+                self.addDiscoveredServer(name: name, type: type, domain: domain, txtRecord: nil, ipAddress: nil)
                 self.cleanupNetServiceResolver(netService)
             }
         }
@@ -363,11 +371,11 @@ class NetServiceTXTResolver: NSObject, NetServiceDelegate {
     let serviceName: String  // publicアクセスに変更
     private let serviceType: String
     private let serviceDomain: String
-    private let onResolved: (NWTXTRecord?) -> Void
+    private let onResolved: (NWTXTRecord?, String?) -> Void
     private let onFailed: (Error) -> Void
     
     init(serviceName: String, serviceType: String, serviceDomain: String, 
-         onResolved: @escaping (NWTXTRecord?) -> Void, 
+         onResolved: @escaping (NWTXTRecord?, String?) -> Void, 
          onFailed: @escaping (Error) -> Void) {
         self.serviceName = serviceName
         self.serviceType = serviceType
@@ -378,13 +386,62 @@ class NetServiceTXTResolver: NSObject, NetServiceDelegate {
     }
     
     func netServiceDidResolveAddress(_ sender: NetService) {
+        // デバッグ: 解決されたアドレス情報をログ出力
+        if let addresses = sender.addresses {
+            print("🔍 [DEBUG] NetService解決済みアドレス数: \(addresses.count)")
+            for (index, addressData) in addresses.enumerated() {
+                let socketAddress = addressData.withUnsafeBytes { bytes in
+                    bytes.bindMemory(to: sockaddr.self).baseAddress!.pointee
+                }
+                
+                var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+                let result = getnameinfo(
+                    addressData.withUnsafeBytes { $0.bindMemory(to: sockaddr.self).baseAddress },
+                    socklen_t(addressData.count),
+                    &hostname,
+                    socklen_t(hostname.count),
+                    nil,
+                    0,
+                    NI_NUMERICHOST
+                )
+                
+                if result == 0 {
+                    let ipAddress = String(cString: hostname)
+                    print("🔍 [DEBUG] アドレス\(index): \(ipAddress)")
+                } else {
+                    print("🔍 [DEBUG] アドレス\(index): 解析失敗")
+                }
+            }
+        }
+        
+        // 最初のIPアドレスを取得
+        var ipAddress: String? = nil
+        if let addresses = sender.addresses, !addresses.isEmpty {
+            let addressData = addresses[0]
+            var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+            let result = getnameinfo(
+                addressData.withUnsafeBytes { $0.bindMemory(to: sockaddr.self).baseAddress },
+                socklen_t(addressData.count),
+                &hostname,
+                socklen_t(hostname.count),
+                nil,
+                0,
+                NI_NUMERICHOST
+            )
+            
+            if result == 0 {
+                ipAddress = String(cString: hostname)
+                print("🔍 [DEBUG] 取得IPアドレス: \(ipAddress!)")
+            }
+        }
+        
         // TXTレコードデータを取得
         if let txtData = sender.txtRecordData() {
             // NSDataからNWTXTRecordに変換
             let txtRecord = convertToNWTXTRecord(from: txtData)
-            onResolved(txtRecord)
+            onResolved(txtRecord, ipAddress)
         } else {
-            onResolved(nil)
+            onResolved(nil, ipAddress)
         }
     }
     

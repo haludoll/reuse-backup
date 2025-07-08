@@ -148,7 +148,19 @@ class ServerDiscoveryManager: ObservableObject {
                     print("🔍 Processing result endpoint: \(result.endpoint)")
                     if case .service(let name, let type, let domain, _) = result.endpoint {
                         print("🌐 Resolving service: \(name).\(type)\(domain)")
-                        self.resolveServiceForTXTRecord(name: name, type: type, domain: domain)
+                        
+                        // NWBrowser.Resultから直接TXTレコードを取得を試みる
+                        var txtRecord: NWTXTRecord? = nil
+                        
+                        // NWBrowser.Resultのメタデータから情報を取得
+                        if let metadata = result.metadata {
+                            if case .bonjour(let bonjourMetadata) = metadata {
+                                txtRecord = bonjourMetadata.txtRecord
+                                print("📋 BonjourメタデータからTXTレコード取得: \(txtRecord != nil ? "成功" : "失敗")")
+                            }
+                        }
+                        
+                        self.addDiscoveredServer(name: name, type: type, domain: domain, txtRecord: txtRecord)
                     } else {
                         print("⚠️ Endpoint is not a service type: \(result.endpoint)")
                     }
@@ -157,56 +169,6 @@ class ServerDiscoveryManager: ObservableObject {
         }
         
         browser?.start(queue: .main)
-    }
-    
-    private func resolveServiceForTXTRecord(name: String, type: String, domain: String) {
-        print("🚀 resolveServiceForTXTRecord開始: \(name).\(type)\(domain)")
-        
-        let serviceEndpoint = NWEndpoint.service(name: name, type: type, domain: domain, interface: nil)
-        let parameters = NWParameters()
-        parameters.includePeerToPeer = true
-        
-        let connection = NWConnection(to: serviceEndpoint, using: parameters)
-        
-        connection.stateUpdateHandler = { [weak self] state in
-            DispatchQueue.main.async {
-                switch state {
-                case .ready:
-                    print("✅ TXTレコード取得用接続確立")
-                    // TXTレコードを取得
-                    if let txtRecord = connection.currentPath?.remoteEndpoint?.txtRecord {
-                        print("📋 TXTレコード取得成功")
-                        self?.addDiscoveredServer(name: name, type: type, domain: domain, txtRecord: txtRecord)
-                    } else {
-                        print("⚠️ TXTレコード取得失敗 - デフォルトポートを使用")
-                        self?.addDiscoveredServer(name: name, type: type, domain: domain, txtRecord: nil)
-                    }
-                    connection.cancel()
-                    
-                case .failed(let error):
-                    print("❌ TXTレコード取得失敗: \(error)")
-                    // 失敗してもデフォルトポートでサーバーを追加
-                    self?.addDiscoveredServer(name: name, type: type, domain: domain, txtRecord: nil)
-                    connection.cancel()
-                    
-                case .cancelled:
-                    break
-                    
-                default:
-                    print("📊 TXTレコード取得接続状態: \(state)")
-                }
-            }
-        }
-        
-        connection.start(queue: .main)
-        
-        // 3秒でタイムアウト
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-            if connection.state != .cancelled {
-                print("⏰ TXTレコード取得タイムアウト")
-                connection.cancel()
-            }
-        }
     }
     
     private func addDiscoveredServer(name: String, type: String, domain: String, txtRecord: NWTXTRecord?) {
@@ -230,8 +192,12 @@ class ServerDiscoveryManager: ObservableObject {
                             httpPort = port
                             print("🔌 HTTPポート発見: \(httpPort)")
                         }
+                    case .none,
+                         .empty:
+                        break
+                    @unknown default:
+                        fatalError()
                     }
-                    break
                 }
             }
         } else {

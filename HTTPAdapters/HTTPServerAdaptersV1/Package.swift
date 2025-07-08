@@ -29,9 +29,5 @@ let package = Package(
                 .product(name: "Hummingbird", package: "hummingbird"),
             ]
         ),
-        .testTarget(
-            name: "HTTPServerAdaptersV1Tests",
-            dependencies: ["HTTPServerAdaptersV1"]
-        ),
     ]
 )

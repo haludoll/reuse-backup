@@ -37,7 +37,9 @@
       "Bash(./scripts/worktree-manager.sh:*)",
       "Bash(swift package:*)",
       "Bash(git rm:*)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "mcp__github__list_pull_requests",
+      "Bash(cat:*)"
     ],
     "deny": []
   }

@@ -105,28 +105,20 @@ public final class TLSCertificateManager: Sendable {
         // 証明書ディレクトリを作成
         try createCertificateDirectory()
         
-        // OpenSSLコマンドを使用して自己署名証明書を生成
+        // iOS環境では事前に生成した証明書を使用
         let certificateURL = certificateDirectory.appendingPathComponent(certificateFileName)
         let privateKeyURL = certificateDirectory.appendingPathComponent(privateKeyFileName)
         
-        // 秘密鍵生成
-        let keyGenResult = try executeCommand([
-            "openssl", "genrsa", "-out", privateKeyURL.path, "2048"
-        ])
+        // 事前に生成した証明書データを作成
+        let certificateData = generateEmbeddedCertificate()
+        let privateKeyData = generateEmbeddedPrivateKey()
         
-        guard keyGenResult.success else {
-            throw CertificateError.generationFailed("秘密鍵生成に失敗しました: \(keyGenResult.error)")
-        }
-        
-        // 証明書生成
-        let certGenResult = try executeCommand([
-            "openssl", "req", "-new", "-x509", "-key", privateKeyURL.path,
-            "-out", certificateURL.path, "-days", "\(Self.certificateValidityDays)",
-            "-subj", "/C=JP/ST=Tokyo/L=Tokyo/O=ReuseBackup/CN=localhost"
-        ])
-        
-        guard certGenResult.success else {
-            throw CertificateError.generationFailed("証明書生成に失敗しました: \(certGenResult.error)")
+        // ファイルに保存
+        do {
+            try certificateData.write(to: certificateURL)
+            try privateKeyData.write(to: privateKeyURL)
+        } catch {
+            throw CertificateError.fileSystemError("証明書ファイルの書き込みに失敗しました: \(error)")
         }
         
         // 生成された証明書を読み込み
@@ -202,28 +194,67 @@ public final class TLSCertificateManager: Sendable {
         try? FileManager.default.removeItem(at: privateKeyURL)
     }
     
-    /// コマンドを実行
-    /// - Parameter arguments: コマンド引数
-    /// - Returns: 実行結果
-    /// - Throws: CertificateError
-    private func executeCommand(_ arguments: [String]) throws -> (success: Bool, error: String) {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-        process.arguments = arguments
-        
-        let pipe = Pipe()
-        process.standardError = pipe
-        
-        do {
-            try process.run()
-            process.waitUntilExit()
-            
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            let errorOutput = String(data: data, encoding: .utf8) ?? ""
-            
-            return (process.terminationStatus == 0, errorOutput)
-        } catch {
-            throw CertificateError.generationFailed("コマンド実行に失敗しました: \(error)")
-        }
+    /// 埋め込み証明書データを生成
+    /// - Returns: 証明書データ（PEM形式）
+    private func generateEmbeddedCertificate() -> Data {
+        // 自己署名証明書（localhost用、1年間有効）
+        let certificateString = """
+-----BEGIN CERTIFICATE-----
+MIIDKjCCAhICCQDqKOVabNHkVjANBgkqhkiG9w0BAQsFADBXMQswCQYDVQQGEwJK
+UDEOMAwGA1UECAwFVG9reW8xDjAMBgNVBAcMBVRva3lvMRQwEgYDVQQKDAtSZXVz
+ZUJhY2t1cDESMBAGA1UEAwwJbG9jYWxob3N0MB4XDTI1MDcwODE2NDE1N1oXDTI2
+MDcwODE2NDE1N1owVzELMAkGA1UEBhMCSlAxDjAMBgNVBAgMBVRva3lvMQ4wDAYD
+VQQHDAVUb2t5bzEUMBIGA1UECgwLUmV1c2VCYWNrdXAxEjAQBgNVBAMMCWxvY2Fs
+aG9zdDCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAK64ege+KyiecZnd
+zrz0XM7zNbJ6U8lGfJndGSInPZX3T6G6JyCxE9dK/wScjECipFocrRHFSr3qcKF+
+OXJAG3MYOjM81vbqXFrxVCZQR90xuqnyzSHzRk8132ZLt1dM1r970b8LbYSqbxKD
+WtIz1I+NfEXxOIDw65AbV8ALpsGdpIgKc5Y1AvvORT5psZk7HPiKXobO/xyU5Dus
+l+x/u01GDJI71ejO0ChspnjYg7tDPnflFY+qHnL1xDvFDD0NV3Hl5gkdOJHm/PQx
+KyxxJHaqgwpGlQDPCo01O7JHyW1SHoHN5Uuoh/8y+vTe4E12kcc4cKrRS1BiW+o2
+B8bEnvsCAwEAATANBgkqhkiG9w0BAQsFAAOCAQEAcPnCPj+0WmRAehoil7eIq6IP
+tFI+axIS8MaYcLyk8M5qh+rhEoXEYnq7Hw6JG0mSf+YBg1/6R0bkXX/LxIvu76my
+MSPEYiM8crkF7Qk+oXb0vWj7bp2BqtcwUsYuEgdaB1QaYGKShQDGAPE9Y337XpJU
+N/8xIk9zTKle2ZNI9XzUSOzZYrzvRodaALDE951n02uy93ZfH1Vk1iqTMTH8GsMF
+EqnKQ1e9hy8gYahnZpbjPH/ybiyVuPqQc33xINFM+FA0pTmMwfWGwCEHfHw+FD7A
+4mIswRBh3Q2MMhjUeeugIrDFZ5m98e2qqbMgEFaPNQ4Q+ooe2qH8yMHSI7Lewg==
+-----END CERTIFICATE-----
+"""
+        return certificateString.data(using: .utf8) ?? Data()
+    }
+    
+    /// 埋め込み秘密鍵データを生成
+    /// - Returns: 秘密鍵データ（PEM形式）
+    private func generateEmbeddedPrivateKey() -> Data {
+        // 対応する秘密鍵
+        let privateKeyString = """
+-----BEGIN RSA PRIVATE KEY-----
+MIIEpQIBAAKCAQEArrh6B74rKJ5xmd3OvPRczvM1snpTyUZ8md0ZIic9lfdPobon
+ILET10r/BJyMQKKkWhytEcVKvepwoX45ckAbcxg6MzzW9upcWvFUJlBH3TG6qfLN
+IfNGTzXfZku3V0zWv3vRvwtthKpvEoNa0jPUj418RfE4gPDrkBtXwAumwZ2kiApz
+ljUC+85FPmmxmTsc+Ipehs7/HJTkO6yX7H+7TUYMkjvV6M7QKGymeNiDu0M+d+UV
+j6oecvXEO8UMPQ1XceXmCR04keb89DErLHEkdqqDCkaVAM8KjTU7skfJbVIegc3l
+S6iH/zL69N7gTXaRxzhwqtFLUGJb6jYHxsSe+wIDAQABAoIBAQCshL0BvjWRUvmq
+y0gibUrikWVZCM6IdE/+AUGa5pI57Mu1TkDqV87Wi1fJbuZRwAZ2b9A4Ns25Pq7d
+1uvUMxani6mUBCPiBMESjy3e8vAyqbK9sl/4gOTQu8oNkP/EdLuqsREHCbqm/z7T
+Ud4wpjrhT/wAd9GqB7khPs5jc13B2EpI+mNYsksXpGO5OwT9Nh0sVjiD/JaKXMA3
+Bd/y0DerrtocksrOY5HsasUbf0lFikgpdo/drzNrvdkQs8SucjJUcDmz/qCuA5wE
+sKH6QZuhYeLPQNe/bhKNpg1JZrnbS7FHVUlY/RBV/QKZ/9DdRblTbZHeKliatz65
+RLpjBx8pAoGBAOeMvvac+M/5grOZBLz4EWjrzPa2KITuZNMsYUOirTHdLDieaPBP
+wat4cPipJikYdGVnZy4ILCv2TYIT159wC3o5w77WIiOP8RaF0g5no23KUAQnS6xx
+K+PyGzcs0PbEjaNcklt/hpB7bnGv4vjp8V+IZg7oUvfKjb1lwdzsBCmPAoGBAMEr
+hj3+L4NWOpOEzzPOh83rqWmH+Skc/FbINiocNV938pe3Rt72fOF3XYadG+8dep7t
+ZA/raOF98iRzpp8+WkJPRy9mL8Ug5U3qkbUm/pA2aumZvj0KnaXjkfQZFYnjOlRb
+M+aAnS9HbLmyCOt4loBqloeUpFlJV9b00thP/cXVAoGAZI89iADYFgp4duMnqaHa
+fcSaeTLXGhQmeYe2nhcSPKufPt+dF3Cr3XorJfLf/cz/D+L+boFiHZ2UP7+6TyXr
+9iMMHd8FaIhk3bE0bskXsuDAK22dccCcnRxSMX4nKmRmVuInNdGGcU0JxBns6sk+
+6IxmNmczUSYItI5yyS0/CYUCgYEAreGw8ELLoCzRg5LsNRU3F7yHfhBAz6pg1vlY
+EGXeAXbmb30yFWfJl+cr0A3CZGajx0WnadEdUsVdX0Sfev7UnpXgXSFd5NOstYtt
+56QXR9dEO80B+s6AhCAqdJDT25AoJGEIgffKBhIEI8/HybZ9u1C2+YpquliT8lHl
+LYQrypUCgYEApNBakRDCW9i1phquKk/bYZ0/ZSzy4gBuWeJnDSQEiqw84AAPudQk
+g6Y0U/MzqW8IE5c8jWSfOZAyI9tphr+bR38efG/NuJkWQ2iMCoWg44eHixlCUCom
+gSxW4vGrQv50xa+LBgcwwhLtC2z5F9Or4pI98AMLMn63hV9T2SXs99c=
+-----END RSA PRIVATE KEY-----
+"""
+        return privateKeyString.data(using: .utf8) ?? Data()
     }
 }

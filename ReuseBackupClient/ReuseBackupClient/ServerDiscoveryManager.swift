@@ -101,16 +101,12 @@ class ServerDiscoveryManager: ObservableObject {
                     print("✅ Bonjour browser ready - starting discovery")
                 case .failed(let error):
                     print("❌ Bonjour browser failed: \(error)")
-                    if error is NWError {
-                        let nwError = error as! NWError
-                        switch nwError {
-                        case .dns(let dnsError):
-                            print("DNS Error: \(dnsError)")
-                        default:
-                            print("Network Error: \(nwError)")
-                        }
-                    } else {
-                        print("Other Error: \(error)")
+                    let nwError = error
+                    switch nwError {
+                    case .dns(let dnsError):
+                        print("DNS Error: \(dnsError)")
+                    default:
+                        print("Network Error: \(nwError)")
                     }
 
                     self?.errorMessage = "Bonjour検索エラー: \(error.localizedDescription)"
@@ -153,11 +149,10 @@ class ServerDiscoveryManager: ObservableObject {
                         var txtRecord: NWTXTRecord? = nil
                         
                         // NWBrowser.Resultのメタデータから情報を取得
-                        if let metadata = result.metadata {
-                            if case .bonjour(let bonjourMetadata) = metadata {
-                                txtRecord = bonjourMetadata.txtRecord
-                                print("📋 BonjourメタデータからTXTレコード取得: \(txtRecord != nil ? "成功" : "失敗")")
-                            }
+                        let metadata = result.metadata
+                        if case .bonjour(let bonjourMetadata) = metadata {
+                            txtRecord = bonjourMetadata
+                            print("📋 BonjourメタデータからTXTレコード取得: \(txtRecord != nil ? "成功" : "失敗")")
                         }
                         
                         self.addDiscoveredServer(name: name, type: type, domain: domain, txtRecord: txtRecord)

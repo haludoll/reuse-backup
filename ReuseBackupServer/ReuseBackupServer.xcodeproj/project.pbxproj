@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		0C1B558B2E1576D10034CF22 /* APISharedModels in Frameworks */ = {isa = PBXBuildFile; productRef = 0C1B558A2E1576D10034CF22 /* APISharedModels */; };
 		0C52DACE2E1D4C9300B3AE84 /* HTTPServerAdapters in Frameworks */ = {isa = PBXBuildFile; productRef = 0C52DACD2E1D4C9300B3AE84 /* HTTPServerAdapters */; };
-		0C9740642E14199C00DEBDBF /* FlyingFox in Frameworks */ = {isa = PBXBuildFile; productRef = 0C9740632E14199C00DEBDBF /* FlyingFox */; };
 		0C9740812E14267A00DEBDBF /* TestPlan.xctestplan in Resources */ = {isa = PBXBuildFile; fileRef = 0C9740802E14267A00DEBDBF /* TestPlan.xctestplan */; };
 /* End PBXBuildFile section */
 
@@ -75,7 +74,6 @@
 			files = (
 				0C1B558B2E1576D10034CF22 /* APISharedModels in Frameworks */,
 				0C52DACE2E1D4C9300B3AE84 /* HTTPServerAdapters in Frameworks */,
-				0C9740642E14199C00DEBDBF /* FlyingFox in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -137,7 +135,6 @@
 			);
 			name = ReuseBackupServer;
 			packageProductDependencies = (
-				0C9740632E14199C00DEBDBF /* FlyingFox */,
 				0C1B558A2E1576D10034CF22 /* APISharedModels */,
 				0C52DACD2E1D4C9300B3AE84 /* HTTPServerAdapters */,
 			);
@@ -224,7 +221,6 @@
 			mainGroup = 0C973F692E13DF3000DEBDBF;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				0C9740622E14199C00DEBDBF /* XCRemoteSwiftPackageReference "FlyingFox" */,
 				0C1B55892E1576D10034CF22 /* XCLocalSwiftPackageReference "../APISharedModels" */,
 				0C52DACC2E1D4C9300B3AE84 /* XCLocalSwiftPackageReference "../HTTPAdapters" */,
 			);
@@ -638,17 +634,6 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		0C9740622E14199C00DEBDBF /* XCRemoteSwiftPackageReference "FlyingFox" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/swhitty/FlyingFox";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.24.0;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
 /* Begin XCSwiftPackageProductDependency section */
 		0C1B558A2E1576D10034CF22 /* APISharedModels */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -657,11 +642,6 @@
 		0C52DACD2E1D4C9300B3AE84 /* HTTPServerAdapters */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = HTTPServerAdapters;
-		};
-		0C9740632E14199C00DEBDBF /* FlyingFox */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 0C9740622E14199C00DEBDBF /* XCRemoteSwiftPackageReference "FlyingFox" */;
-			productName = FlyingFox;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

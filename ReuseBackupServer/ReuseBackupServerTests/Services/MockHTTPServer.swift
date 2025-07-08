@@ -1,4 +1,5 @@
-import FlyingFox
+import HTTPServerAdapters
+import HTTPTypes
 import Foundation
 @testable import ReuseBackupServer
 
@@ -7,7 +8,7 @@ final class MockHTTPServer: HTTPServerProtocol, @unchecked Sendable {
     // MARK: - Properties
 
     let port: UInt16
-    private var routes: [HTTPRoute: HTTPHandler] = [:]
+    private var routes: [HTTPRouteInfo: HTTPHandlerAdapter] = [:]
     private(set) var isRunning = false
 
     // MARK: - Call Tracking
@@ -23,8 +24,8 @@ final class MockHTTPServer: HTTPServerProtocol, @unchecked Sendable {
 
     // MARK: - Request Simulation
 
-    private(set) var lastAppendedRoute: HTTPRoute?
-    private(set) var lastAppendedHandler: HTTPHandler?
+    private(set) var lastAppendedRoute: HTTPRouteInfo?
+    private(set) var lastAppendedHandler: HTTPHandlerAdapter?
 
     // MARK: - Initialization
 
@@ -34,7 +35,7 @@ final class MockHTTPServer: HTTPServerProtocol, @unchecked Sendable {
 
     // MARK: - HTTPServerProtocol
 
-    func appendRoute(_ route: HTTPRoute, to handler: HTTPHandler) async {
+    func appendRoute(_ route: HTTPRouteInfo, to handler: HTTPHandlerAdapter) async {
         appendRouteCallCount += 1
         routes[route] = handler
         lastAppendedRoute = route
@@ -78,7 +79,7 @@ final class MockHTTPServer: HTTPServerProtocol, @unchecked Sendable {
     }
 
     /// 指定されたルートが登録されているかチェック
-    func hasRoute(_ route: HTTPRoute) -> Bool {
+    func hasRoute(_ route: HTTPRouteInfo) -> Bool {
         routes.keys.contains(route)
     }
 
@@ -88,7 +89,7 @@ final class MockHTTPServer: HTTPServerProtocol, @unchecked Sendable {
     }
 
     /// 指定されたルートのハンドラーでリクエストをシミュレート
-    func simulateRequest(for route: HTTPRoute, request: HTTPRequest) async throws -> HTTPResponse? {
+    func simulateRequest(for route: HTTPRouteInfo, request: HTTPRequestInfo) async throws -> HTTPResponseInfo? {
         guard let handler = routes[route] else {
             return nil
         }
@@ -114,19 +115,17 @@ extension MockHTTPServer {
     }
 }
 
-// MARK: - HTTPRoute Hashable Extension
+// MARK: - HTTPRouteInfo Hashable Extension
 
-extension HTTPRoute: @retroactive Equatable {}
-extension HTTPRoute: @retroactive Hashable {
+extension HTTPRouteInfo: @retroactive Equatable {}
+extension HTTPRouteInfo: @retroactive Hashable {
     public func hash(into hasher: inout Hasher) {
-        hasher.combine(methods)
-        for component in path {
-            hasher.combine(component.description)
-        }
+        hasher.combine(method)
+        hasher.combine(path)
     }
 
-    public static func == (lhs: HTTPRoute, rhs: HTTPRoute) -> Bool {
-        lhs.methods == rhs.methods && lhs.path == rhs.path
+    public static func == (lhs: HTTPRouteInfo, rhs: HTTPRouteInfo) -> Bool {
+        lhs.method == rhs.method && lhs.path == rhs.path
     }
 }
 

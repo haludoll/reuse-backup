@@ -1,5 +1,6 @@
 import APISharedModels
-import FlyingFox
+import HTTPServerAdapters
+import HTTPTypes
 import Foundation
 @testable import ReuseBackupServer
 import Testing
@@ -16,18 +17,18 @@ struct StatusHandlerTests {
     @Test func when_healthy_server_then_returns_running_status() async throws {
         let startTime = Date(timeIntervalSinceNow: -100)
         let handler = StatusHandler(port: 8080, startTime: startTime)
-        let request = HTTPRequest(method: .GET, version: .http11, path: "/api/status", query: [], headers: [:], body: Data())
+        let request = HTTPRequestInfo(method: .get, path: "/api/status")
 
         let response = try await handler.handleRequest(request)
 
-        #expect(response.statusCode == HTTPStatusCode.ok)
-        #expect(response.headers[HTTPHeader.contentType] == "application/json")
+        #expect(response.status == .ok)
+        #expect(response.headerFields[.contentType] == "application/json")
 
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        let statusResponse = try await decoder.decode(
+        let statusResponse = try decoder.decode(
             Components.Schemas.ServerStatus.self,
-            from: response.bodyData
+            from: response.body!
         )
         #expect(statusResponse.status == .running)
         #expect(statusResponse.version == "1.0.0")
@@ -38,14 +39,14 @@ struct StatusHandlerTests {
         // 24時間以上前の開始時刻を設定
         let startTime = Date(timeIntervalSinceNow: -90000) // 25時間前
         let handler = StatusHandler(port: 8080, startTime: startTime)
-        let request = HTTPRequest(method: .GET, version: .http11, path: "/api/status", query: [], headers: [:], body: Data())
+        let request = HTTPRequestInfo(method: .get, path: "/api/status")
 
         let response = try await handler.handleRequest(request)
 
-        #expect(response.statusCode == HTTPStatusCode.ok)
+        #expect(response.status == .ok)
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        let statusResponse = try await decoder.decode(Components.Schemas.ServerStatus.self, from: response.bodyData)
+        let statusResponse = try decoder.decode(Components.Schemas.ServerStatus.self, from: response.body!)
         #expect(statusResponse.status == .running) // 長時間稼働は正常
         #expect(statusResponse.uptime > 86400) // 24時間以上
     }
@@ -53,14 +54,14 @@ struct StatusHandlerTests {
     @Test func when_uptime_calculated_then_reflects_time_difference() async throws {
         let startTime = Date(timeIntervalSinceNow: -300)
         let handler = StatusHandler(port: 8080, startTime: startTime)
-        let request = HTTPRequest(method: .GET, version: .http11, path: "/api/status", query: [], headers: [:], body: Data())
+        let request = HTTPRequestInfo(method: .get, path: "/api/status")
 
         let response = try await handler.handleRequest(request)
 
-        #expect(response.statusCode == HTTPStatusCode.ok)
+        #expect(response.status == .ok)
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        let statusResponse = try await decoder.decode(Components.Schemas.ServerStatus.self, from: response.bodyData)
+        let statusResponse = try decoder.decode(Components.Schemas.ServerStatus.self, from: response.body!)
         let uptime = statusResponse.uptime
 
         #expect(uptime > 299)
@@ -73,14 +74,14 @@ struct StatusHandlerTests {
 
         for port in ports {
             let handler = StatusHandler(port: port, startTime: startTime)
-            let request = HTTPRequest(method: .GET, version: .http11, path: "/api/status", query: [], headers: [:], body: Data())
+            let request = HTTPRequestInfo(method: .get, path: "/api/status")
 
             let response = try await handler.handleRequest(request)
 
-            #expect(response.statusCode == HTTPStatusCode.ok)
+            #expect(response.status == .ok)
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
-            let statusResponse = try await decoder.decode(Components.Schemas.ServerStatus.self, from: response.bodyData)
+            let statusResponse = try decoder.decode(Components.Schemas.ServerStatus.self, from: response.body!)
             #expect(statusResponse.status == .running)
         }
     }
@@ -88,14 +89,14 @@ struct StatusHandlerTests {
     @Test func when_health_check_runs_then_verifies_system_status() async throws {
         let startTime = Date()
         let handler = StatusHandler(port: 8080, startTime: startTime)
-        let request = HTTPRequest(method: .GET, version: .http11, path: "/api/status", query: [], headers: [:], body: Data())
+        let request = HTTPRequestInfo(method: .get, path: "/api/status")
 
         let response = try await handler.handleRequest(request)
 
-        #expect(response.statusCode == HTTPStatusCode.ok)
+        #expect(response.status == .ok)
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        let statusResponse = try await decoder.decode(Components.Schemas.ServerStatus.self, from: response.bodyData)
+        let statusResponse = try decoder.decode(Components.Schemas.ServerStatus.self, from: response.body!)
         // システムが正常であれば"running"
         #expect(statusResponse.status == .running)
     }

@@ -27,7 +27,17 @@ final class HTTPServerService: HTTPServerServiceProtocol {
     private var startTime: Date?
 
     /// メッセージ管理
-    let messageManager = MessageManager()
+    private var _messageManager: MessageManager?
+    var messageManager: MessageManager {
+        if let manager = _messageManager {
+            return manager
+        }
+        let manager = MainActor.assumeIsolated {
+            MessageManager()
+        }
+        _messageManager = manager
+        return manager
+    }
 
     /// Bonjourサービス発見機能
     private var bonjourService: BonjourService?

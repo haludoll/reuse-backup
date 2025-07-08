@@ -293,3 +293,141 @@ class ExampleViewModel: ObservableObject {
 1. コード変更を伴うタスクの完了
 2. swift-formatによる自動フォーマット実行
 3. フォーマット後のコードをgit commitに含める
+
+## Git Worktree並列開発運用
+
+本プロジェクトでは**Git Worktree**を活用した並列開発環境を提供し、複数のIssue/機能を同時に進行できます。
+
+### Worktree戦略の利点
+- **並列開発**: 複数のClaude Codeインスタンスを異なるブランチで同時実行
+- **独立環境**: 各ブランチが完全に独立したワーキングディレクトリを持つ
+- **効率性**: ブランチ切り替えやstash/unstashが不要
+- **安全性**: 他のブランチの変更に影響されない独立した開発環境
+
+### ディレクトリ構造
+```
+/Users/{user}/dev/
+├── reuse-backup/                    # メインリポジトリ（現在のワークスペース）
+└── reuse-backup-worktrees/          # 並列開発用worktreeディレクトリ
+    ├── issue-25-feature-a/          # Issue #25専用worktree
+    ├── issue-26-bugfix-b/           # Issue #26専用worktree
+    ├── main/                        # mainブランチ確認用worktree
+    └── {branch-name}/               # その他のブランチworktree
+```
+
+### 管理スクリプト
+並列開発を支援する管理スクリプトを提供：
+
+#### 1. Worktree管理スクリプト (`scripts/worktree-manager.sh`)
+```bash
+# 新規worktree作成
+./scripts/worktree-manager.sh create issue-25-new-feature
+
+# 既存worktree削除
+./scripts/worktree-manager.sh delete issue-25-new-feature
+
+# worktree一覧表示
+./scripts/worktree-manager.sh list
+
+# 状態確認
+./scripts/worktree-manager.sh status
+
+# マージ済みブランチのクリーンアップ
+./scripts/worktree-manager.sh cleanup
+```
+
+#### 2. Claude並列起動スクリプト (`scripts/claude-parallel.sh`)
+```bash
+# 新規worktree作成 + Claude Code起動
+./scripts/claude-parallel.sh new issue-25-new-feature
+
+# 既存worktreeでClaude Code起動
+./scripts/claude-parallel.sh start issue-26-bugfix
+
+# 実行中のClaude Codeプロセス確認
+./scripts/claude-parallel.sh list-running
+
+# 特定ブランチのClaude Code終了
+./scripts/claude-parallel.sh kill issue-25-new-feature
+
+# 全Claude Codeプロセス終了
+./scripts/claude-parallel.sh kill-all
+```
+
+### 並列開発フロー
+
+#### 基本的な開発手順
+1. **Issue作成**: GitHub Issueを作成
+2. **Worktree作成**: `./scripts/claude-parallel.sh new issue-{番号}-{機能名}`
+3. **並列開発**: 複数のClaude Codeインスタンスで同時開発
+4. **PR作成**: 各ブランチでPull Request作成
+5. **クリーンアップ**: マージ後にworktreeを削除
+
+#### 複数Issue同時進行例
+```bash
+# Issue #25: 新機能開発
+./scripts/claude-parallel.sh new issue-25-upload-feature
+
+# Issue #26: バグ修正（並行して実行）
+./scripts/claude-parallel.sh new issue-26-fix-memory-leak
+
+# Issue #27: リファクタリング（さらに並行実行）
+./scripts/claude-parallel.sh new issue-27-refactor-networking
+
+# 現在の状況確認
+./scripts/claude-parallel.sh list-running
+```
+
+### Worktree運用ルール
+
+#### 作成ルール
+- **命名規則**: `issue-{番号}-{機能名}`形式を厳守
+- **ベースブランチ**: 基本的にmainブランチから作成
+- **リモート同期**: 作成時に自動でリモートブランチも作成・同期
+
+#### 管理ルール
+- **定期クリーンアップ**: マージ済みブランチのworktreeは速やかに削除
+- **状態確認**: `worktree-manager.sh status`で定期的に状態確認
+- **プロセス管理**: Claude Codeプロセスは適切に終了してからworktree削除
+
+#### セキュリティ考慮事項
+- **独立性**: 各worktreeは完全に独立、相互影響なし
+- **データ整合性**: 各worktreeで独立したコミット履歴を維持
+- **リソース管理**: 不要なworktreeは速やかに削除してディスク容量を節約
+
+### トラブルシューティング
+
+#### よくある問題と解決方法
+```bash
+# worktree作成エラー時
+git worktree prune  # 古いworktree参照をクリーンアップ
+
+# ブランチ削除エラー時
+git branch -D {branch-name}  # 強制削除
+
+# リモート同期エラー時
+git fetch origin  # リモート情報を更新
+```
+
+#### 緊急時のクリーンアップ
+```bash
+# 全worktreeを強制削除（緊急時のみ）
+./scripts/worktree-manager.sh cleanup
+rm -rf /Users/$(whoami)/dev/reuse-backup-worktrees/*
+```
+
+### パフォーマンス最適化
+
+#### 推奨設定
+- **最大並列数**: 同時実行Claude Codeインスタンスは最大3-4個を推奨
+- **メモリ監視**: 各インスタンスのメモリ使用量を定期的に確認
+- **ディスク容量**: worktreeディレクトリのサイズを定期的にチェック
+
+#### 監視コマンド
+```bash
+# ディスク使用量確認
+du -sh /Users/$(whoami)/dev/reuse-backup-worktrees/*
+
+# プロセス確認
+./scripts/claude-parallel.sh list-running
+```

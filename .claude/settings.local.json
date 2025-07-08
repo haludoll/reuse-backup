@@ -37,7 +37,8 @@
       "Bash(swift test)",
       "Bash(swift test:*)",
       "Bash(swift format:*)",
-      "Bash(git worktree:*)"
+      "Bash(git worktree:*)",
+      "Bash(chmod:*)"
     ],
     "deny": []
   }

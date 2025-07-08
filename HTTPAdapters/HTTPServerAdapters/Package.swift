@@ -16,16 +16,16 @@ let package = Package(
         ),
     ],
     dependencies: [
-        // Core shared interfaces
-        .package(path: "../HTTPServerAdaptersCore"),
-        // HummingBird v2.x for iOS 17+ (conditionally imported)
-        .package(url: "https://github.com/hummingbird-project/hummingbird", from: "2.0.0"),
+        // Apple's standardized HTTP types
+        .package(url: "https://github.com/apple/swift-http-types", from: "1.0.0"),
+        // HummingBird v1.x for HTTP server functionality (iOS 15+ compatible)
+        .package(url: "https://github.com/hummingbird-project/hummingbird", from: "1.0.0"),
     ],
     targets: [
         .target(
             name: "HTTPServerAdapters",
             dependencies: [
-                .product(name: "HTTPServerAdaptersCore", package: "HTTPServerAdaptersCore"),
+                .product(name: "HTTPTypes", package: "swift-http-types"),
                 .product(name: "Hummingbird", package: "hummingbird"),
             ]
         ),

@@ -1,31 +1,50 @@
 import XCTest
+import HTTPTypes
 @testable import HTTPServerAdapters
 
 final class HTTPServerAdaptersTests: XCTestCase {
     
-    func testFactoryCreatesServerBasedOnIOSVersion() throws {
+    func testFactoryCreatesHummingBirdV1Server() throws {
         let server = HTTPServerAdapterFactory.createServer(port: 8080)
         XCTAssertEqual(server.port, 8080)
-        
-        // Verify that the factory returns the appropriate adapter type
-        if #available(iOS 17.0, *) {
-            XCTAssertTrue(server is HummingBirdV2Adapter)
-        } else {
-            XCTAssertTrue(server is HummingBirdV1Adapter)
-        }
+        XCTAssertTrue(server is HummingBirdV1Adapter)
     }
     
-    func testFactoryCreatesSpecificServerType() throws {
-        // Test V1 adapter creation
-        let v1Server = HTTPServerAdapterFactory.createServer(type: .hummingBirdV1, port: 8081)
-        XCTAssertEqual(v1Server.port, 8081)
-        XCTAssertTrue(v1Server is HummingBirdV1Adapter)
+    func testHTTPRouteInfoInitialization() {
+        let route = HTTPRouteInfo(method: .get, path: "/test")
+        XCTAssertEqual(route.method, .get)
+        XCTAssertEqual(route.path, "/test")
+    }
+    
+    func testHTTPRequestInfoInitialization() {
+        var headerFields = HTTPFields()
+        headerFields[.contentType] = "application/json"
         
-        // Test V2 adapter creation (only on iOS 17+)
-        if #available(iOS 17.0, *) {
-            let v2Server = HTTPServerAdapterFactory.createServer(type: .hummingBirdV2, port: 8082)
-            XCTAssertEqual(v2Server.port, 8082)
-            XCTAssertTrue(v2Server is HummingBirdV2Adapter)
-        }
+        let request = HTTPRequestInfo(
+            method: .post,
+            path: "/api/upload",
+            headerFields: headerFields,
+            body: Data("test".utf8)
+        )
+        
+        XCTAssertEqual(request.method, .post)
+        XCTAssertEqual(request.path, "/api/upload")
+        XCTAssertEqual(request.body, Data("test".utf8))
+        XCTAssertEqual(request.headerFields[.contentType], "application/json")
+    }
+    
+    func testHTTPResponseInfoInitialization() {
+        var headerFields = HTTPFields()
+        headerFields[.contentType] = "application/json"
+        
+        let response = HTTPResponseInfo(
+            status: .ok,
+            headerFields: headerFields,
+            body: Data("response".utf8)
+        )
+        
+        XCTAssertEqual(response.status, .ok)
+        XCTAssertEqual(response.body, Data("response".utf8))
+        XCTAssertEqual(response.headerFields[.contentType], "application/json")
     }
 }

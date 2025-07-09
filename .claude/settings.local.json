@@ -58,7 +58,8 @@
       "Bash(git merge:*)",
       "Bash(gh pr close:*)",
       "Bash(./worktree-manager.sh delete:*)",
-      "Bash(git branch:*)"
+      "Bash(git branch:*)",
+      "mcp__github__update_pull_request"
     ],
     "deny": []
   }

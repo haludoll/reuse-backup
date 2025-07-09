@@ -49,7 +49,7 @@ final class MediaUploadHandler: HTTPHandlerAdapter {
             logger.info("Received multipart fields: \(multipartData.keys)")
             for (key, value) in multipartData {
                 if key == "file" {
-                    logger.info("Field '\(key)': <binary data size: \(value.data?.count ?? 0)>")
+                    logger.info("Field '\(key)': <binary data size: \(value.data.count)>")
                 } else {
                     logger.info("Field '\(key)': \(value.string ?? "<nil>")")
                 }
@@ -73,6 +73,7 @@ final class MediaUploadHandler: HTTPHandlerAdapter {
             }
             
             // メディアタイプをバリデーション
+            logger.info("Validating mediaType: '\(mediaTypeString)'")
             let mediaType: MediaType
             switch mediaTypeString.lowercased() {
             case "photo":
@@ -80,29 +81,37 @@ final class MediaUploadHandler: HTTPHandlerAdapter {
             case "video":
                 mediaType = .video
             default:
+                logger.error("Invalid mediaType: '\(mediaTypeString)'")
                 return createErrorResponse(
                     message: "Invalid mediaType. Must be 'photo' or 'video'",
                     status: .badRequest
                 )
             }
+            logger.info("MediaType validated successfully: \(mediaType)")
             
             // タイムスタンプをパース
+            logger.info("Parsing timestamp: '\(timestampString)'")
             let dateFormatter = ISO8601DateFormatter()
             guard let timestamp = dateFormatter.date(from: timestampString) else {
+                logger.error("Failed to parse timestamp: '\(timestampString)'")
                 return createErrorResponse(
                     message: "Invalid timestamp format. Must be ISO 8601",
                     status: .badRequest
                 )
             }
+            logger.info("Timestamp parsed successfully: \(timestamp)")
             
             // ファイル形式をバリデーション
             let fileExtension = URL(fileURLWithPath: filename).pathExtension.lowercased()
+            logger.info("Validating file extension: '\(fileExtension)' for mediaType: \(mediaType)")
             guard isValidFileType(extension: fileExtension, for: mediaType) else {
+                logger.error("Unsupported file type: '\(fileExtension)' for mediaType: \(mediaType)")
                 return createErrorResponse(
                     message: "Unsupported file type for \(mediaTypeString): .\(fileExtension)",
                     status: .badRequest
                 )
             }
+            logger.info("File type validation successful")
             
             // ストレージ容量をチェック
             if let insufficientStorageResponse = try checkStorageCapacity(for: fileValue.fileSize) {

@@ -49,7 +49,8 @@ final class MediaUploadHandler: HTTPHandlerAdapter {
             logger.info("Received multipart fields: \(multipartData.keys)")
             for (key, value) in multipartData {
                 if key == "file" {
-                    logger.info("Field '\(key)': <binary data size: \(value.data.count)>")
+                    let dataSize = value.data.count
+                    logger.info("Field '\(key)': <binary data size: \(dataSize)>")
                 } else {
                     logger.info("Field '\(key)': \(value.string ?? "<nil>")")
                 }
@@ -87,7 +88,7 @@ final class MediaUploadHandler: HTTPHandlerAdapter {
                     status: .badRequest
                 )
             }
-            logger.info("MediaType validated successfully: \(mediaType)")
+            logger.info("MediaType validated successfully: \(String(describing: mediaType))")
             
             // タイムスタンプをパース
             logger.info("Parsing timestamp: '\(timestampString)'")
@@ -103,9 +104,9 @@ final class MediaUploadHandler: HTTPHandlerAdapter {
             
             // ファイル形式をバリデーション
             let fileExtension = URL(fileURLWithPath: filename).pathExtension.lowercased()
-            logger.info("Validating file extension: '\(fileExtension)' for mediaType: \(mediaType)")
+            logger.info("Validating file extension: '\(fileExtension)' for mediaType: \(String(describing: mediaType))")
             guard isValidFileType(extension: fileExtension, for: mediaType) else {
-                logger.error("Unsupported file type: '\(fileExtension)' for mediaType: \(mediaType)")
+                logger.error("Unsupported file type: '\(fileExtension)' for mediaType: \(String(describing: mediaType))")
                 return createErrorResponse(
                     message: "Unsupported file type for \(mediaTypeString): .\(fileExtension)",
                     status: .badRequest

@@ -1,4 +1,5 @@
 import APISharedModels
+import AVFoundation
 import Foundation
 
 class HTTPClient: NSObject {
@@ -96,6 +97,143 @@ class HTTPClient: NSObject {
                 throw HTTPClientError.serverError(errorResponse)
             } catch {
                 throw HTTPClientError.httpError(statusCode: httpResponse.statusCode)
+            }
+        }
+    }
+
+    /// メディアファイルをアップロード
+    func uploadMedia(
+        baseURL: URL,
+        mediaData: MediaUploadData,
+        progressHandler: @escaping (Double) -> Void = { _ in }
+    ) async throws -> Components.Schemas.MediaUploadResponse {
+        let url = baseURL.appendingPathComponent("/api/media/upload")
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 300.0 // 大きなファイル対応のため延長
+
+        // マルチパートデータを作成
+        let boundary = "Boundary-\(UUID().uuidString)"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        let multipartData = createMultipartData(
+            mediaData: mediaData,
+            boundary: boundary
+        )
+
+        request.httpBody = multipartData
+
+        // プログレス対応のアップロード
+        let (data, response) = try await uploadWithProgress(request: request, progressHandler: progressHandler)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw HTTPClientError.invalidResponse
+        }
+
+        if httpResponse.statusCode == 200 {
+            do {
+                let uploadResponse = try decoder.decode(Components.Schemas.MediaUploadResponse.self, from: data)
+                return uploadResponse
+            } catch {
+                throw HTTPClientError.decodingError(error)
+            }
+        } else {
+            do {
+                let errorResponse = try decoder.decode(Components.Schemas.ErrorResponse.self, from: data)
+                throw HTTPClientError.serverError(errorResponse)
+            } catch {
+                throw HTTPClientError.httpError(statusCode: httpResponse.statusCode)
+            }
+        }
+    }
+
+    /// マルチパートデータを作成
+    private func createMultipartData(mediaData: MediaUploadData, boundary: String) -> Data {
+        var data = Data()
+        let lineBreak = "\r\n"
+
+        // ファイルデータ
+        data.append("--\(boundary)\(lineBreak)".data(using: .utf8)!)
+        data
+            .append("Content-Disposition: form-data; name=\"file\"; filename=\"\(mediaData.filename)\"\(lineBreak)"
+                .data(using: .utf8)!
+            )
+        data.append("Content-Type: \(mediaData.mimeType)\(lineBreak)\(lineBreak)".data(using: .utf8)!)
+        data.append(mediaData.data)
+        data.append(lineBreak.data(using: .utf8)!)
+
+        // ファイル名
+        data.append("--\(boundary)\(lineBreak)".data(using: .utf8)!)
+        data.append("Content-Disposition: form-data; name=\"filename\"\(lineBreak)\(lineBreak)".data(using: .utf8)!)
+        data.append(mediaData.filename.data(using: .utf8)!)
+        data.append(lineBreak.data(using: .utf8)!)
+
+        // ファイルサイズ
+        data.append("--\(boundary)\(lineBreak)".data(using: .utf8)!)
+        data.append("Content-Disposition: form-data; name=\"fileSize\"\(lineBreak)\(lineBreak)".data(using: .utf8)!)
+        data.append("\(mediaData.fileSize)".data(using: .utf8)!)
+        data.append(lineBreak.data(using: .utf8)!)
+
+        // MIMEタイプ
+        data.append("--\(boundary)\(lineBreak)".data(using: .utf8)!)
+        data.append("Content-Disposition: form-data; name=\"mimeType\"\(lineBreak)\(lineBreak)".data(using: .utf8)!)
+        data.append(mediaData.mimeType.data(using: .utf8)!)
+        data.append(lineBreak.data(using: .utf8)!)
+
+        // メディアタイプ
+        data.append("--\(boundary)\(lineBreak)".data(using: .utf8)!)
+        data.append("Content-Disposition: form-data; name=\"mediaType\"\(lineBreak)\(lineBreak)".data(using: .utf8)!)
+        data.append(mediaData.mediaType.rawValue.data(using: .utf8)!)
+        data.append(lineBreak.data(using: .utf8)!)
+
+        // タイムスタンプ
+        let iso8601Formatter = ISO8601DateFormatter()
+        let timestampString = iso8601Formatter.string(from: mediaData.timestamp)
+        data.append("--\(boundary)\(lineBreak)".data(using: .utf8)!)
+        data.append("Content-Disposition: form-data; name=\"timestamp\"\(lineBreak)\(lineBreak)".data(using: .utf8)!)
+        data.append(timestampString.data(using: .utf8)!)
+        data.append(lineBreak.data(using: .utf8)!)
+
+        // 終了境界
+        data.append("--\(boundary)--\(lineBreak)".data(using: .utf8)!)
+
+        return data
+    }
+
+    /// プログレス対応のアップロード
+    private func uploadWithProgress(
+        request: URLRequest,
+        progressHandler: @escaping (Double) -> Void
+    ) async throws -> (Data, URLResponse) {
+        try await withCheckedThrowingContinuation { continuation in
+            let task = session.uploadTask(with: request, from: request.httpBody!) { data, response, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else if let data, let response {
+                    continuation.resume(returning: (data, response))
+                } else {
+                    continuation.resume(throwing: HTTPClientError.invalidResponse)
+                }
+            }
+
+            // プログレス監視
+            let observation = task.progress.observe(\.fractionCompleted) { progress, _ in
+                Task { @MainActor in
+                    progressHandler(progress.fractionCompleted)
+                }
+            }
+
+            task.resume()
+
+            // タスク完了時に監視を停止
+            Task {
+                try await Task.sleep(nanoseconds: 100_000_000) // 0.1秒待機
+                while task.state == .running {
+                    try await Task.sleep(nanoseconds: 100_000_000)
+                }
+                observation.invalidate()
             }
         }
     }

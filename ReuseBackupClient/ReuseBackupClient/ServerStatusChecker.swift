@@ -5,8 +5,8 @@
 //  Created by haludoll on 2025/07/08.
 //
 
-import Foundation
 import APISharedModels
+import Foundation
 
 @MainActor
 final class ServerStatusChecker: ObservableObject {

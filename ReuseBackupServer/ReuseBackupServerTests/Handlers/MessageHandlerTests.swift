@@ -7,6 +7,7 @@ import Testing
 @testable import ReuseBackupServer
 
 @Suite("MessageHandler Tests")
+@MainActor
 struct MessageHandlerTests {
     private let messageManager = MessageManager()
 

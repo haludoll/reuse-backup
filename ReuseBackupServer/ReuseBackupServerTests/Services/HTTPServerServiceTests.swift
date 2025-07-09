@@ -14,46 +14,46 @@ struct HTTPServerServiceTests {
     // MARK: - Basic Service Tests
 
     @Test func when_service_initialized_then_default_state_is_correct() async throws {
-        let service = HTTPServerService()
+        let service = await HTTPServerService()
 
-        #expect(service.isRunning == false)
-        #expect(service.port == 8080)
+        #expect(await service.isRunning == false)
+        #expect(await service.port == 8080)
     }
 
     @Test func when_service_initialized_with_custom_port_then_port_is_set() async throws {
         let customPort: UInt16 = 9090
-        let service = HTTPServerService(port: customPort)
+        let service = await HTTPServerService(port: customPort)
 
-        #expect(service.port == customPort)
-        #expect(service.isRunning == false)
+        #expect(await service.port == customPort)
+        #expect(await service.isRunning == false)
     }
 
     // MARK: - Dependency Injection Tests
 
     @Test func when_service_initialized_with_mock_factory_then_uses_mock() async throws {
         let mockFactory = MockHTTPServerFactory()
-        let service = HTTPServerService(port: 8080, serverFactory: mockFactory)
+        let service = await HTTPServerService(port: 8080, serverFactory: mockFactory)
 
-        #expect(service.isRunning == false)
+        #expect(await service.isRunning == false)
         #expect(mockFactory.createServerCallCount == 0)
     }
 
     @Test func when_service_starts_then_creates_server_via_factory() async throws {
         let mockFactory = MockHTTPServerFactory()
-        let service = HTTPServerService(port: 8080, serverFactory: mockFactory)
+        let service = await HTTPServerService(port: 8080, serverFactory: mockFactory)
 
         try await service.start()
 
         #expect(mockFactory.createServerCallCount == 1)
         #expect(mockFactory.lastCreatedPort == 8080)
-        #expect(service.isRunning == true)
+        #expect(await service.isRunning == true)
 
         await service.stop()
     }
 
     @Test func when_service_starts_then_configures_routes() async throws {
         let mockFactory = MockHTTPServerFactory()
-        let service = HTTPServerService(port: 8080, serverFactory: mockFactory)
+        let service = await HTTPServerService(port: 8080, serverFactory: mockFactory)
 
         try await service.start()
 
@@ -71,28 +71,28 @@ struct HTTPServerServiceTests {
 
     @Test func when_service_starts_multiple_times_then_only_starts_once() async throws {
         let mockFactory = MockHTTPServerFactory()
-        let service = HTTPServerService(port: 8080, serverFactory: mockFactory)
+        let service = await HTTPServerService(port: 8080, serverFactory: mockFactory)
 
         try await service.start()
         try await service.start()
         try await service.start()
 
         #expect(mockFactory.createServerCallCount == 1)
-        #expect(service.isRunning == true)
+        #expect(await service.isRunning == true)
 
         await service.stop()
     }
 
     @Test func when_service_stops_then_server_stops() async throws {
         let mockFactory = MockHTTPServerFactory()
-        let service = HTTPServerService(port: 8080, serverFactory: mockFactory)
+        let service = await HTTPServerService(port: 8080, serverFactory: mockFactory)
 
         try await service.start()
-        #expect(service.isRunning == true)
+        #expect(await service.isRunning == true)
 
         await service.stop()
 
-        #expect(service.isRunning == false)
+        #expect(await service.isRunning == false)
         guard let mockServer = mockFactory.lastCreatedServer else {
             #expect(Bool(false), "Mock server should exist")
             return
@@ -101,23 +101,23 @@ struct HTTPServerServiceTests {
     }
 
     @Test func when_service_stops_without_starting_then_no_error() async throws {
-        let service = HTTPServerService()
+        let service = await HTTPServerService()
 
         await service.stop()
 
-        #expect(service.isRunning == false)
+        #expect(await service.isRunning == false)
     }
 
     @Test func when_service_stops_multiple_times_then_stops_gracefully() async throws {
         let mockFactory = MockHTTPServerFactory()
-        let service = HTTPServerService(port: 8080, serverFactory: mockFactory)
+        let service = await HTTPServerService(port: 8080, serverFactory: mockFactory)
 
         try await service.start()
         await service.stop()
         await service.stop()
         await service.stop()
 
-        #expect(service.isRunning == false)
+        #expect(await service.isRunning == false)
         guard let mockServer = mockFactory.lastCreatedServer else {
             #expect(Bool(false), "Mock server should exist")
             return
@@ -129,7 +129,7 @@ struct HTTPServerServiceTests {
 
     @Test func when_status_handler_configured_then_route_exists() async throws {
         let mockFactory = MockHTTPServerFactory()
-        let service = HTTPServerService(port: 8080, serverFactory: mockFactory)
+        let service = await HTTPServerService(port: 8080, serverFactory: mockFactory)
 
         try await service.start()
 
@@ -147,7 +147,7 @@ struct HTTPServerServiceTests {
 
     @Test func when_server_factory_throws_then_service_handles_error() async throws {
         let mockFactory = MockHTTPServerFactory()
-        let service = HTTPServerService(port: 8080, serverFactory: mockFactory)
+        let service = await HTTPServerService(port: 8080, serverFactory: mockFactory)
 
         // サーバー作成後にrun()でエラーを発生させる
         try await service.start()
@@ -163,37 +163,37 @@ struct HTTPServerServiceTests {
         // サーバーがエラーで停止した場合、isRunningがfalseになることを確認
         // 実際のテストでは、サーバータスクの完了を待つ必要がある
         await service.stop()
-        #expect(service.isRunning == false)
+        #expect(await service.isRunning == false)
     }
 
     // MARK: - Integration Tests
 
     @Test func service_conforms_to_protocol() async throws {
-        let service: HTTPServerServiceProtocol = HTTPServerService()
+        let service: HTTPServerServiceProtocol = await HTTPServerService()
 
-        #expect(service.isRunning == false)
+        #expect(await service.isRunning == false)
     }
 
     @Test func service_lifecycle_with_mock() async throws {
         let mockFactory = MockHTTPServerFactory()
-        let service = HTTPServerService(port: 8080, serverFactory: mockFactory)
+        let service = await HTTPServerService(port: 8080, serverFactory: mockFactory)
 
         // 初期状態
-        #expect(service.isRunning == false)
+        #expect(await service.isRunning == false)
         #expect(mockFactory.createServerCallCount == 0)
 
         // 開始
         try await service.start()
-        #expect(service.isRunning == true)
+        #expect(await service.isRunning == true)
         #expect(mockFactory.createServerCallCount == 1)
 
         // 停止
         await service.stop()
-        #expect(service.isRunning == false)
+        #expect(await service.isRunning == false)
 
         // 再開始
         try await service.start()
-        #expect(service.isRunning == true)
+        #expect(await service.isRunning == true)
         #expect(mockFactory.createServerCallCount == 2)
 
         await service.stop()
@@ -361,8 +361,8 @@ struct MockHTTPServerServiceTests {
 /// プロトコル準拠性のテスト
 struct HTTPServerServiceProtocolTests {
     @Test func real_service_conforms_to_protocol() async throws {
-        let service: HTTPServerServiceProtocol = HTTPServerService()
-        #expect(service.isRunning == false)
+        let service: HTTPServerServiceProtocol = await HTTPServerService()
+        #expect(await service.isRunning == false)
     }
 
     @Test func mock_service_conforms_to_protocol() async throws {
@@ -372,12 +372,12 @@ struct HTTPServerServiceProtocolTests {
 
     @Test func protocol_polymorphism() async throws {
         let services: [HTTPServerServiceProtocol] = [
-            HTTPServerService(),
+            await HTTPServerService(),
             MockHTTPServerService(),
         ]
 
         for service in services {
-            #expect(service.isRunning == false)
+            #expect(await service.isRunning == false)
         }
     }
 }

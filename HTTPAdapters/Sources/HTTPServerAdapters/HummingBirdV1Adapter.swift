@@ -89,9 +89,14 @@ import HTTPTypes
             } catch {
                 if enableTLS {
                     print("❌ HTTPS server failed to start: \(error)")
+                    print("🔍 Error type: \(type(of: error))")
                     // TLS関連のエラーメッセージを追加
                     if let tlsError = error as? TLSCertificateManager.CertificateError {
                         print("🔒 TLS Certificate Error: \(tlsError.description)")
+                    }
+                    if let nsError = error as? NSError {
+                        print("🔍 Error domain: \(nsError.domain), code: \(nsError.code)")
+                        print("🔍 User info: \(nsError.userInfo)")
                     }
                 } else {
                     print("❌ HTTP server failed to start: \(error)")

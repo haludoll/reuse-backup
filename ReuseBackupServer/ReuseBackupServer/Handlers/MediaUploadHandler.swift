@@ -124,15 +124,34 @@ final class MediaUploadHandler: HTTPHandlerAdapter {
             // ファイルを保存（ストリーミング処理）
             let savedMedia: SavedMediaInfo
             if let tempFileURL = fileValue.tempFileURL {
-                // 大きなファイルの場合はストリーミング保存
-                savedMedia = try await mediaStorage.saveMediaStreaming(
-                    sourceURL: tempFileURL,
-                    filename: filename,
-                    mediaType: mediaType,
-                    timestamp: timestamp,
-                    mimeType: multipartData["mimeType"]?.string
-                )
+                logger.info("Using streaming save with temp file: \(tempFileURL.path)")
+                
+                // 一時ファイルの存在確認
+                let tempFileExists = fileManager.fileExists(atPath: tempFileURL.path)
+                logger.info("Temp file exists: \(tempFileExists)")
+                
+                if !tempFileExists {
+                    logger.error("Temp file not found, falling back to data-based save")
+                    // 一時ファイルが見つからない場合はデータベースの保存にフォールバック
+                    savedMedia = try await mediaStorage.saveMedia(
+                        data: fileValue.data,
+                        filename: filename,
+                        mediaType: mediaType,
+                        timestamp: timestamp,
+                        mimeType: multipartData["mimeType"]?.string
+                    )
+                } else {
+                    // 大きなファイルの場合はストリーミング保存
+                    savedMedia = try await mediaStorage.saveMediaStreaming(
+                        sourceURL: tempFileURL,
+                        filename: filename,
+                        mediaType: mediaType,
+                        timestamp: timestamp,
+                        mimeType: multipartData["mimeType"]?.string
+                    )
+                }
             } else {
+                logger.info("Using data-based save (no temp file)")
                 // 小さなファイルの場合は従来の方法
                 savedMedia = try await mediaStorage.saveMedia(
                     data: fileValue.data,

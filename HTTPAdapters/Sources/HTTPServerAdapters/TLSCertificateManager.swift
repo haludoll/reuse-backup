@@ -68,9 +68,9 @@ public final class TLSCertificateManager: Sendable {
     /// 既存の証明書があれば使用し、なければ新規生成
     /// - Returns: TLSConfiguration
     /// - Throws: CertificateError
-    public func getTLSConfiguration() throws -> TLSConfiguration {
-        let certificateChain = try getCertificateChain()
-        let privateKey = try getPrivateKey()
+    public func getTLSConfiguration() async throws -> TLSConfiguration {
+        let certificateChain = try await getCertificateChain()
+        let privateKey = try await getPrivateKey()
 
         return TLSConfiguration.makeServerConfiguration(
             certificateChain: certificateChain.map { .certificate($0) },
@@ -81,7 +81,7 @@ public final class TLSCertificateManager: Sendable {
     /// 証明書チェーンを取得
     /// - Returns: 証明書チェーン
     /// - Throws: CertificateError
-    private func getCertificateChain() throws -> [NIOSSLCertificate] {
+    private func getCertificateChain() async throws -> [NIOSSLCertificate] {
         // まずKeychainから証明書を取得を試行
         if let certificateData = loadCertificateFromKeychain() {
             do {
@@ -125,13 +125,13 @@ public final class TLSCertificateManager: Sendable {
         }
 
         // 新規証明書を生成
-        return try generateSelfSignedCertificate()
+        return try await generateSelfSignedCertificate()
     }
 
     /// 秘密鍵を取得
     /// - Returns: 秘密鍵
     /// - Throws: CertificateError
-    private func getPrivateKey() throws -> NIOSSLPrivateKey {
+    private func getPrivateKey() async throws -> NIOSSLPrivateKey {
         // まずKeychainから秘密鍵を取得を試行
         if let privateKeyData = loadPrivateKeyFromKeychain() {
             do {
@@ -153,11 +153,13 @@ public final class TLSCertificateManager: Sendable {
     /// 自己署名証明書を生成
     /// - Returns: 証明書チェーン
     /// - Throws: CertificateError
-    private func generateSelfSignedCertificate() throws -> [NIOSSLCertificate] {
+    private func generateSelfSignedCertificate() async throws -> [NIOSSLCertificate] {
         print("🔐 TLSCertificateManager: デバイス固有の新しい証明書を生成中...")
 
-        // CryptoKitを使用してデバイス固有の証明書を動的に生成
-        let (certificateData, privateKeyData) = try generateDeviceSpecificCertificate()
+        // CryptoKitを使用してデバイス固有の証明書を動的に生成（非同期実行）
+        let (certificateData, privateKeyData) = try await Task.detached {
+            try self.generateDeviceSpecificCertificate()
+        }.value
 
         // 生成した証明書と秘密鍵をKeychainに保存
         try saveCertificateToKeychain(certificateData)

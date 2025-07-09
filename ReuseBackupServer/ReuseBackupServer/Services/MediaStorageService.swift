@@ -27,7 +27,7 @@ final class MediaStorageService {
     
     // MARK: - Public Methods
     
-    /// メディアファイルを保存
+    /// メディアファイルを保存（従来のData形式）
     /// - Parameters:
     ///   - data: ファイルデータ
     ///   - filename: 元のファイル名
@@ -95,6 +95,81 @@ final class MediaStorageService {
             filename: savedFilename,
             mediaType: mediaType,
             fileSize: data.count
+        )
+    }
+    
+    /// ストリーミングでメディアファイルを保存（メモリ効率重視）
+    /// - Parameters:
+    ///   - sourceURL: 一時ファイルのURL
+    ///   - filename: 元のファイル名
+    ///   - mediaType: メディアタイプ（photo/video）
+    ///   - timestamp: ファイル作成時刻
+    ///   - mimeType: MIMEタイプ（オプション）
+    /// - Returns: 保存されたメディア情報
+    func saveMediaStreaming(
+        sourceURL: URL,
+        filename: String,
+        mediaType: MediaType,
+        timestamp: Date,
+        mimeType: String? = nil
+    ) async throws -> SavedMediaInfo {
+        
+        // ファイルサイズを取得
+        let fileAttributes = try fileManager.attributesOfItem(atPath: sourceURL.path)
+        let fileSize = fileAttributes[.size] as? Int ?? 0
+        
+        logger.info("Starting streaming save for media file: \(filename) (\(fileSize) bytes)")
+        
+        // 一意のメディアIDを生成
+        let mediaId = generateMediaId(for: filename, timestamp: timestamp)
+        
+        // ファイル拡張子を取得
+        let fileExtension = URL(fileURLWithPath: filename).pathExtension
+        
+        // 保存先パスを決定
+        let subdirectory = getSubdirectory(for: mediaType, timestamp: timestamp)
+        let targetDirectory = mediaDirectory.appendingPathComponent(subdirectory, isDirectory: true)
+        
+        // ディレクトリを作成
+        try fileManager.createDirectory(at: targetDirectory, withIntermediateDirectories: true)
+        
+        // 重複しないファイル名を生成
+        let savedFilename = generateUniqueFilename(
+            baseFilename: filename,
+            mediaId: mediaId,
+            directory: targetDirectory
+        )
+        
+        let targetURL = targetDirectory.appendingPathComponent(savedFilename)
+        
+        // ファイルをストリーミングコピー（メモリ効率的）
+        try await streamingFileCopy(from: sourceURL, to: targetURL)
+        
+        // ファイル属性を設定（作成日時など）
+        try setFileAttributes(url: targetURL, timestamp: timestamp)
+        
+        // メタデータを保存
+        let metadataInfo = MediaMetadata(
+            mediaId: mediaId,
+            originalFilename: filename,
+            savedFilename: savedFilename,
+            mediaType: mediaType,
+            fileSize: fileSize,
+            mimeType: mimeType ?? inferMimeType(from: fileExtension),
+            originalTimestamp: timestamp,
+            savedTimestamp: Date(),
+            relativePath: subdirectory + "/" + savedFilename
+        )
+        
+        try await saveMetadata(metadataInfo)
+        
+        logger.info("Streaming media file saved successfully: \(savedFilename) in \(subdirectory)")
+        
+        return SavedMediaInfo(
+            mediaId: mediaId,
+            filename: savedFilename,
+            mediaType: mediaType,
+            fileSize: fileSize
         )
     }
     
@@ -284,6 +359,60 @@ final class MediaStorageService {
             .appendingPathComponent("metadata", isDirectory: true)
             .appendingPathComponent("\(mediaId).json")
     }
+    
+    /// ストリーミングファイルコピー（メモリ効率的）
+    private func streamingFileCopy(from sourceURL: URL, to targetURL: URL) async throws {
+        let chunkSize = 8 * 1024 * 1024 // 8MB chunks
+        
+        try await withCheckedThrowingContinuation { continuation in
+            DispatchQueue.global(qos: .utility).async {
+                do {
+                    let inputStream = InputStream(url: sourceURL)
+                    let outputStream = OutputStream(url: targetURL, append: false)
+                    
+                    guard let input = inputStream, let output = outputStream else {
+                        throw MediaStorageError.streamCreationFailed
+                    }
+                    
+                    input.open()
+                    output.open()
+                    
+                    defer {
+                        input.close()
+                        output.close()
+                    }
+                    
+                    var buffer = [UInt8](repeating: 0, count: chunkSize)
+                    var totalBytesCopied = 0
+                    
+                    while input.hasBytesAvailable {
+                        let bytesRead = input.read(&buffer, maxLength: chunkSize)
+                        
+                        if bytesRead < 0 {
+                            throw MediaStorageError.streamReadError
+                        }
+                        
+                        if bytesRead == 0 {
+                            break
+                        }
+                        
+                        let bytesWritten = output.write(buffer, maxLength: bytesRead)
+                        if bytesWritten != bytesRead {
+                            throw MediaStorageError.streamWriteError
+                        }
+                        
+                        totalBytesCopied += bytesWritten
+                    }
+                    
+                    self.logger.info("Streaming copy completed: \(totalBytesCopied) bytes")
+                    continuation.resume()
+                    
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
 }
 
 // MARK: - Supporting Types
@@ -344,6 +473,9 @@ enum MediaStorageError: Error, LocalizedError {
     case mediaNotFound(String)
     case metadataCorrupted(String)
     case diskSpaceInsufficient
+    case streamCreationFailed
+    case streamReadError
+    case streamWriteError
     
     var errorDescription: String? {
         switch self {
@@ -355,6 +487,12 @@ enum MediaStorageError: Error, LocalizedError {
             return "Metadata corrupted for media: \(mediaId)"
         case .diskSpaceInsufficient:
             return "Insufficient disk space for media storage"
+        case .streamCreationFailed:
+            return "Failed to create input/output streams"
+        case .streamReadError:
+            return "Error reading from input stream"
+        case .streamWriteError:
+            return "Error writing to output stream"
         }
     }
 }

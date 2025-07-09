@@ -42,11 +42,11 @@ final class MediaUploadHandler: HTTPHandlerAdapter {
         }
         
         do {
-            // マルチパートデータを解析
-            let multipartData = try parseMultipartFormData(body: body, contentType: contentType)
+            // ストリーミングマルチパートデータを解析
+            let multipartData = try await parseMultipartFormDataStreaming(body: body, contentType: contentType)
             
             // 必須フィールドをバリデーション
-            guard let fileData = multipartData["file"],
+            guard let fileValue = multipartData["file"],
                   let filename = multipartData["filename"]?.string,
                   let mediaTypeString = multipartData["mediaType"]?.string,
                   let timestampString = multipartData["timestamp"]?.string else {
@@ -89,18 +89,31 @@ final class MediaUploadHandler: HTTPHandlerAdapter {
             }
             
             // ストレージ容量をチェック
-            if let insufficientStorageResponse = try checkStorageCapacity(for: fileData.count) {
+            if let insufficientStorageResponse = try checkStorageCapacity(for: fileValue.fileSize) {
                 return insufficientStorageResponse
             }
             
-            // ファイルを保存
-            let savedMedia = try await mediaStorage.saveMedia(
-                data: fileData,
-                filename: filename,
-                mediaType: mediaType,
-                timestamp: timestamp,
-                mimeType: multipartData["mimeType"]?.string
-            )
+            // ファイルを保存（ストリーミング処理）
+            let savedMedia: SavedMediaInfo
+            if let tempFileURL = fileValue.tempFileURL {
+                // 大きなファイルの場合はストリーミング保存
+                savedMedia = try await mediaStorage.saveMediaStreaming(
+                    sourceURL: tempFileURL,
+                    filename: filename,
+                    mediaType: mediaType,
+                    timestamp: timestamp,
+                    mimeType: multipartData["mimeType"]?.string
+                )
+            } else {
+                // 小さなファイルの場合は従来の方法
+                savedMedia = try await mediaStorage.saveMedia(
+                    data: fileValue.data,
+                    filename: filename,
+                    mediaType: mediaType,
+                    timestamp: timestamp,
+                    mimeType: multipartData["mimeType"]?.string
+                )
+            }
             
             // 成功レスポンスを作成
             return createSuccessResponse(savedMedia: savedMedia)
@@ -116,7 +129,7 @@ final class MediaUploadHandler: HTTPHandlerAdapter {
     
     // MARK: - Private Methods
     
-    /// マルチパートフォームデータを解析
+    /// マルチパートフォームデータを解析（従来版）
     private func parseMultipartFormData(body: Data, contentType: String) throws -> [String: MultipartValue] {
         // Content-Typeからboundaryを抽出
         guard let boundary = extractBoundary(from: contentType) else {
@@ -125,6 +138,17 @@ final class MediaUploadHandler: HTTPHandlerAdapter {
         
         let parser = MultipartParser(boundary: boundary)
         return try parser.parse(data: body)
+    }
+    
+    /// ストリーミングマルチパートフォームデータを解析（メモリ効率版）
+    private func parseMultipartFormDataStreaming(body: Data, contentType: String) async throws -> [String: MultipartStreamValue] {
+        // Content-Typeからboundaryを抽出
+        guard let boundary = extractBoundary(from: contentType) else {
+            throw MediaUploadError.invalidContentType("Missing boundary in Content-Type")
+        }
+        
+        let streamParser = MultipartStreamParser(boundary: boundary)
+        return try await streamParser.parseStream(data: body)
     }
     
     /// Content-Typeからboundaryを抽出
@@ -140,12 +164,12 @@ final class MediaUploadHandler: HTTPHandlerAdapter {
     }
     
     /// ファイル形式が有効かチェック
-    private func isValidFileType(extension: String, for mediaType: MediaType) -> Bool {
+    private func isValidFileType(extension fileExtension: String, for mediaType: MediaType) -> Bool {
         switch mediaType {
         case .photo:
-            return ["jpg", "jpeg", "png", "heic", "gif", "webp"].contains(extension)
+            return ["jpg", "jpeg", "png", "heic", "gif", "webp"].contains(fileExtension)
         case .video:
-            return ["mov", "mp4", "m4v"].contains(extension)
+            return ["mov", "mp4", "m4v"].contains(fileExtension)
         }
     }
     
@@ -164,7 +188,7 @@ final class MediaUploadHandler: HTTPHandlerAdapter {
         if availableCapacity < requiredCapacity {
             return createErrorResponse(
                 message: "Insufficient storage space",
-                status: .insufficientStorage
+                status: .internalServerError
             )
         }
         

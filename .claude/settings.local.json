@@ -43,7 +43,10 @@
       "Bash(git worktree:*)",
       "Bash(chmod:*)",
       "Bash(git worktree:*)",
-      "Bash(swift build:*)"
+      "Bash(swift build:*)",
+      "Bash(cp:*)",
+      "Bash(git stash:*)",
+      "mcp__github__search_repositories"
     ],
     "deny": []
   }

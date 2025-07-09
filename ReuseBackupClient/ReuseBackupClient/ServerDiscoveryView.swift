@@ -1,10 +1,10 @@
-import SwiftUI
-import Network
 import APISharedModels
+import Network
+import SwiftUI
 
 struct ServerDiscoveryView: View {
     @StateObject private var discoveryManager = ServerDiscoveryManager()
-    
+
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
@@ -18,16 +18,20 @@ struct ServerDiscoveryView: View {
                         }
                     } else {
                         HStack {
-                            Image(systemName: discoveryManager.discoveredServers.isEmpty ? "magnifyingglass" : "checkmark.circle.fill")
-                                .foregroundColor(discoveredServers.isEmpty ? .gray : .green)
-                            Text(discoveredServers.isEmpty ? "サーバーが見つかりません" : "\(discoveredServers.count)台のサーバーが見つかりました")
+                            Image(systemName: discoveryManager.discoveredServers
+                                .isEmpty ? "magnifyingglass" : "checkmark.circle.fill"
+                            )
+                            .foregroundColor(discoveredServers.isEmpty ? .gray : .green)
+                            Text(discoveredServers
+                                .isEmpty ? "サーバーが見つかりません" : "\(discoveredServers.count)台のサーバーが見つかりました"
+                            )
                         }
                     }
                 }
                 .padding()
                 .background(Color(.systemGray6))
                 .cornerRadius(8)
-                
+
                 // Server List
                 if !discoveredServers.isEmpty {
                     List(discoveredServers, id: \.endpoint) { server in
@@ -42,11 +46,11 @@ struct ServerDiscoveryView: View {
                         Image(systemName: "network.slash")
                             .font(.system(size: 48))
                             .foregroundColor(.gray)
-                        
+
                         Text("サーバーが見つかりません")
                             .font(.headline)
                             .foregroundColor(.gray)
-                        
+
                         Text("ReuseBackupServerアプリが同じネットワーク上で動作していることを確認してください")
                             .font(.caption)
                             .foregroundColor(.gray)
@@ -54,22 +58,24 @@ struct ServerDiscoveryView: View {
                     }
                     .padding(40)
                 }
-                
+
                 Spacer()
-                
+
                 // Manual Server Entry
                 VStack(alignment: .leading, spacing: 8) {
                     Text("手動でサーバーを追加")
                         .font(.headline)
-                    
+
                     HStack {
                         TextField("例: 192.168.1.100:8080", text: $discoveryManager.manualServerAddress)
                             .textFieldStyle(RoundedBorderTextFieldStyle())
-                        
+
                         Button("追加") {
                             discoveryManager.addManualServer()
                         }
-                        .disabled(discoveryManager.manualServerAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .disabled(discoveryManager.manualServerAddress.trimmingCharacters(in: .whitespacesAndNewlines)
+                            .isEmpty
+                        )
                     }
                 }
                 .padding()
@@ -90,13 +96,13 @@ struct ServerDiscoveryView: View {
                 discoveryManager.startDiscovery()
             }
             .alert(discoveryManager.alertTitle, isPresented: $discoveryManager.showingAlert) {
-                Button("OK") { }
+                Button("OK") {}
             } message: {
                 Text(discoveryManager.alertMessage)
             }
         }
     }
-    
+
     private var discoveredServers: [DiscoveredServer] {
         discoveryManager.discoveredServers
     }
@@ -105,7 +111,7 @@ struct ServerDiscoveryView: View {
 struct ServerRowView: View {
     let server: DiscoveredServer
     @StateObject private var statusChecker = ServerStatusChecker()
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -116,9 +122,9 @@ struct ServerRowView: View {
                         .font(.caption)
                         .foregroundColor(.gray)
                 }
-                
+
                 Spacer()
-                
+
                 Group {
                     if statusChecker.isChecking {
                         ProgressView()
@@ -129,7 +135,7 @@ struct ServerRowView: View {
                     }
                 }
             }
-            
+
             if let status = statusChecker.serverStatus {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("ステータス: \(status.status.rawValue)")
@@ -147,7 +153,7 @@ struct ServerRowView: View {
             await statusChecker.checkStatus(endpoint: server.endpoint)
         }
     }
-    
+
     private func formatUptime(_ uptime: Int) -> String {
         let hours = uptime / 3600
         let minutes = (uptime % 3600) / 60

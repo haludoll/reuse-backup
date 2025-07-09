@@ -173,45 +173,45 @@ swift test --package-path APISharedModels/
 
 ### Git Worktree作業フロー
 
-1. **Worktree作成**: Issue作業開始時に`./claude-parallel.sh new <issue番号> [<説明>]`を実行
+1. **Worktree作成**: Issue作業開始時に`./scripts/claude-parallel.sh new <issue番号> [<説明>]`を実行
 2. **作業実行**: 作成されたworktreeディレクトリで開発作業を実行
 3. **コミット・プッシュ**: 通常のgit操作でコミット・プッシュを実行
 4. **PR作成**: 作業完了後、Pull Requestを作成
-5. **Worktree削除**: PR完了後、`./worktree-manager.sh delete <branch名>`で削除
+5. **Worktree削除**: PR完了後、`./scripts/worktree-manager.sh delete <branch名>`で削除
 
 ### 使用可能なWorktreeスクリプト
 
 #### worktree-manager.sh
 ```bash
 # 新規worktreeの作成（子ディレクトリ方式）
-./worktree-manager.sh create <branch名> [<path>]
+./scripts/worktree-manager.sh create <branch名> [<path>]
 
 # 既存worktreeの一覧表示
-./worktree-manager.sh list
+./scripts/worktree-manager.sh list
 
 # worktreeの状態確認
-./worktree-manager.sh status
+./scripts/worktree-manager.sh status
 
 # worktreeの削除
-./worktree-manager.sh delete <branch名>
+./scripts/worktree-manager.sh delete <branch名>
 ```
 
-#### claude-parallel.sh
+#### claude-parallel.sh（推奨）
 ```bash
-# Issue番号ベースでworktreeを作成（推奨）
-./claude-parallel.sh new <issue番号> [<説明>]
+# Issue番号ベースでworktreeを作成（子ディレクトリ方式）
+./scripts/claude-parallel.sh new <issue番号> [<説明>]
 ```
 
 #### 使用例
 ```bash
 # 新しいIssueの作業開始
-./claude-parallel.sh new 75 "improve-performance"
+./scripts/claude-parallel.sh new 75 "improve-performance"
 
 # 作業ディレクトリに移動（Claude Code制限内で正常動作）
 cd worktrees/issue-75-improve-performance
 
 # 作業完了後の削除
-./worktree-manager.sh delete issue-75-improve-performance
+./scripts/worktree-manager.sh delete issue-75-improve-performance
 ```
 
 ### Claude Code専用の運用ルール

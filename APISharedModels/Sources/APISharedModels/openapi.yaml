@@ -95,6 +95,167 @@ paths:
                     error: "Internal server error"
                     received: false
 
+  /api/media/upload:
+    post:
+      summary: 写真・動画アップロード
+      description: |
+        クライアントから写真または動画をサーバーにアップロードする。
+        
+        **機能:**
+        - 写真・動画のマルチパートアップロード
+        - ファイルサイズ制限なし（ローカルネットワーク環境に最適化）
+        - メタデータ付きファイル転送
+        - メディアタイプ自動判定
+        
+        **対応形式:**
+        - 写真: JPEG, PNG, HEIC, GIF, WebP
+        - 動画: MOV, MP4, M4V
+      operationId: uploadMedia
+      tags:
+        - Media
+      requestBody:
+        description: アップロードするメディアファイルとメタデータ
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+                - filename
+                - mediaType
+                - timestamp
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: アップロードするファイルのバイナリデータ
+                filename:
+                  type: string
+                  description: 元のファイル名
+                  example: "IMG_0001.HEIC"
+                  minLength: 1
+                  maxLength: 255
+                fileSize:
+                  type: integer
+                  format: int64
+                  description: ファイルサイズ（バイト）
+                  example: 5242880
+                  minimum: 0
+                mimeType:
+                  type: string
+                  description: ファイルのMIMEタイプ
+                  example: "image/heic"
+                  enum:
+                    - "image/jpeg"
+                    - "image/png"
+                    - "image/heic"
+                    - "image/gif"
+                    - "image/webp"
+                    - "video/quicktime"
+                    - "video/mp4"
+                    - "video/x-m4v"
+                mediaType:
+                  type: string
+                  description: メディアタイプ
+                  example: "photo"
+                  enum:
+                    - "photo"
+                    - "video"
+                timestamp:
+                  type: string
+                  format: date-time
+                  description: ファイル作成時刻（ISO 8601形式）
+                  example: "2025-07-01T12:00:00Z"
+            examples:
+              photo_upload:
+                summary: 写真アップロード
+                value:
+                  filename: "IMG_0001.HEIC"
+                  fileSize: 5242880
+                  mimeType: "image/heic"
+                  mediaType: "photo"
+                  timestamp: "2025-07-01T12:00:00Z"
+              video_upload:
+                summary: 動画アップロード
+                value:
+                  filename: "VID_0001.MOV"
+                  fileSize: 104857600
+                  mimeType: "video/quicktime"
+                  mediaType: "video"
+                  timestamp: "2025-07-01T12:30:00Z"
+      responses:
+        '200':
+          description: アップロード成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaUploadResponse'
+              examples:
+                photo_success:
+                  summary: 写真アップロード成功
+                  value:
+                    status: "success"
+                    mediaId: "media_12345"
+                    filename: "IMG_0001.HEIC"
+                    mediaType: "photo"
+                    fileSize: 5242880
+                    serverTimestamp: "2025-07-01T12:00:01Z"
+                video_success:
+                  summary: 動画アップロード成功
+                  value:
+                    status: "success"
+                    mediaId: "media_67890"
+                    filename: "VID_0001.MOV"
+                    mediaType: "video"
+                    fileSize: 104857600
+                    serverTimestamp: "2025-07-01T12:30:01Z"
+        '400':
+          description: 無効なリクエスト
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_file_type:
+                  summary: 無効なファイル形式
+                  value:
+                    status: "error"
+                    error: "Unsupported file type"
+                    received: false
+                missing_file:
+                  summary: ファイルが未指定
+                  value:
+                    status: "error"
+                    error: "File is required"
+                    received: false
+        '507':
+          description: ストレージ容量不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                storage_full:
+                  summary: ストレージ容量不足
+                  value:
+                    status: "error"
+                    error: "Insufficient storage space"
+                    received: false
+        '500':
+          description: サーバー内部エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                upload_failed:
+                  summary: アップロード失敗
+                  value:
+                    status: "error"
+                    error: "Failed to save file"
+                    received: false
+
   /api/status:
     get:
       summary: サーバーステータス取得
@@ -197,6 +358,73 @@ components:
         error: "Invalid JSON format"
         received: false
 
+    MediaUploadResponse:
+      type: object
+      required:
+        - status
+        - serverTimestamp
+      properties:
+        status:
+          type: string
+          enum: ["success", "error"]
+          description: アップロード処理ステータス
+          example: "success"
+        mediaId:
+          type: string
+          description: アップロードされたメディアの一意識別子（成功時のみ）
+          example: "media_12345"
+        filename:
+          type: string
+          description: アップロードされたファイル名（成功時のみ）
+          example: "IMG_0001.HEIC"
+        mediaType:
+          type: string
+          description: メディアタイプ（成功時のみ）
+          example: "photo"
+          enum:
+            - "photo"
+            - "video"
+        fileSize:
+          type: integer
+          format: int64
+          description: アップロードされたファイルサイズ（成功時のみ）
+          example: 5242880
+          minimum: 0
+        serverTimestamp:
+          type: string
+          format: date-time
+          description: サーバー処理時刻（ISO 8601形式）
+          example: "2025-07-01T12:00:01Z"
+        error:
+          type: string
+          description: エラーメッセージ（エラー時のみ）
+          example: "Unsupported file type"
+      examples:
+        photo_success:
+          summary: 写真アップロード成功
+          value:
+            status: "success"
+            mediaId: "media_12345"
+            filename: "IMG_0001.HEIC"
+            mediaType: "photo"
+            fileSize: 5242880
+            serverTimestamp: "2025-07-01T12:00:01Z"
+        video_success:
+          summary: 動画アップロード成功
+          value:
+            status: "success"
+            mediaId: "media_67890"
+            filename: "VID_0001.MOV"
+            mediaType: "video"
+            fileSize: 104857600
+            serverTimestamp: "2025-07-01T12:30:01Z"
+        error_response:
+          summary: エラー応答
+          value:
+            status: "error"
+            error: "Unsupported file type"
+            serverTimestamp: "2025-07-01T12:00:01Z"
+
     ServerStatus:
       type: object
       required:
@@ -235,5 +463,7 @@ components:
 tags:
   - name: Messages
     description: メッセージ送受信機能
+  - name: Media
+    description: 写真・動画アップロード機能
   - name: Status
     description: サーバーステータス管理

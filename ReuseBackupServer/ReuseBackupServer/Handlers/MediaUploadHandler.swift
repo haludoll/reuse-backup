@@ -52,15 +52,17 @@ final class MediaUploadHandler: HTTPHandlerAdapter {
                     let dataSize = value.data.count
                     logger.info("Field '\(key)': <binary data size: \(dataSize)>")
                 } else {
-                    logger.info("Field '\(key)': \(value.string ?? "<nil>")")
+                    let rawValue = value.string ?? "<nil>"
+                    let trimmedValue = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                    logger.info("Field '\(key)': '\(rawValue)' (trimmed: '\(trimmedValue)')")
                 }
             }
             
             // 必須フィールドをバリデーション
             guard let fileValue = multipartData["file"],
-                  let filename = multipartData["filename"]?.string,
-                  let mediaTypeString = multipartData["mediaType"]?.string,
-                  let timestampString = multipartData["timestamp"]?.string else {
+                  let filename = multipartData["filename"]?.string?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  let mediaTypeString = multipartData["mediaType"]?.string?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  let timestampString = multipartData["timestamp"]?.string?.trimmingCharacters(in: .whitespacesAndNewlines) else {
                 
                 let missingFields = ["file", "filename", "mediaType", "timestamp"].filter { key in
                     multipartData[key] == nil

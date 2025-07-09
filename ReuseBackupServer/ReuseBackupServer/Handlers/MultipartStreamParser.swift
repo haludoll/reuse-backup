@@ -98,28 +98,6 @@ final class MultipartStreamParser {
         
         logger.info("Created single file chunk: \(fileURL.path) (\(data.count) bytes)")
         return [chunk]
-            let chunkEnd = boundaryRange.lowerBound
-            
-            if chunkStart < chunkEnd {
-                let chunkData = data.subdata(in: chunkStart..<chunkEnd)
-                
-                // チャンクを一時ファイルに保存（メモリ節約）
-                let chunkURL = tempDirectory.appendingPathComponent("chunk_\(chunkCounter).tmp")
-                try await saveChunkToFile(chunkData, to: chunkURL)
-                
-                let chunk = MultipartChunk(
-                    id: chunkCounter,
-                    fileURL: chunkURL,
-                    size: chunkData.count
-                )
-                chunks.append(chunk)
-                chunkCounter += 1
-            }
-            
-            currentIndex = boundaryRange.upperBound
-        }
-        
-        return chunks
     }
     
     /// 次のboundaryの位置を検索

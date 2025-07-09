@@ -123,10 +123,8 @@ class HTTPClient: NSObject {
             boundary: boundary
         )
 
-        request.httpBody = multipartData
-
         // プログレス対応のアップロード
-        let (data, response) = try await uploadWithProgress(request: request, progressHandler: progressHandler)
+        let (data, response) = try await uploadWithProgress(request: request, data: multipartData, progressHandler: progressHandler)
 
         guard let httpResponse = response as? HTTPURLResponse else {
             throw HTTPClientError.invalidResponse
@@ -205,14 +203,15 @@ class HTTPClient: NSObject {
     /// プログレス対応のアップロード
     private func uploadWithProgress(
         request: URLRequest,
+        data: Data,
         progressHandler: @escaping (Double) -> Void
     ) async throws -> (Data, URLResponse) {
         try await withCheckedThrowingContinuation { continuation in
-            let task = session.uploadTask(with: request, from: request.httpBody!) { data, response, error in
+            let task = session.uploadTask(with: request, from: data) { responseData, response, error in
                 if let error {
                     continuation.resume(throwing: error)
-                } else if let data, let response {
-                    continuation.resume(returning: (data, response))
+                } else if let responseData, let response {
+                    continuation.resume(returning: (responseData, response))
                 } else {
                     continuation.resume(throwing: HTTPClientError.invalidResponse)
                 }

@@ -27,7 +27,7 @@
 
 - **通信方式**: HTTP + Bonjour
 - **通信方向**: クライアント → サーバー（一方向）
-- **古いスマホ**: FlyingFox + Network Framework (iOS 15対応)
+- **古いスマホ**: HummingBird + Network Framework (iOS 15対応)
 - **新しいスマホ**: URLSession + SwiftUI (iOS 17対応)
 
 ## 開発方針

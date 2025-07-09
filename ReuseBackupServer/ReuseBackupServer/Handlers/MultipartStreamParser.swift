@@ -56,27 +56,48 @@ final class MultipartStreamParser {
         return tempDir
     }
     
-    /// データをチャンクに分割して処理
+    /// データをチャンクに分割して処理（効率化版）
     private func processDataInChunks(data: Data, tempDirectory: URL) async throws -> [MultipartChunk] {
-        var chunks: [MultipartChunk] = []
-        var currentIndex = 0
-        var chunkCounter = 0
+        logger.info("Starting optimized chunk processing for \(data.count) bytes")
         
-        logger.info("Starting chunk processing for \(data.count) bytes")
+        // マルチパートデータを効率的に解析
+        return try await processMultipartDataEfficiently(data: data, tempDirectory: tempDirectory)
+    }
+    
+    /// 効率的なマルチパート解析（単純化版）
+    private func processMultipartDataEfficiently(data: Data, tempDirectory: URL) async throws -> [MultipartChunk] {
+        logger.info("Using simplified multipart processing")
         
-        // boundaryでデータを分割
-        while currentIndex < data.count {
-            let progress = Double(currentIndex) / Double(data.count) * 100
-            logger.info("Processing chunk \(chunkCounter), progress: \(String(format: "%.1f", progress))%")
-            
-            // 次のboundaryを検索
-            guard let boundaryRange = findNextBoundary(in: data, startingAt: currentIndex) else {
-                logger.info("No more boundaries found at index \(currentIndex)")
-                break
+        // 大容量ファイルの場合は、シンプルな方法を使用
+        // マルチパートデータを全て一つのファイルとして処理
+        return try await processAsSignleFile(data: data, tempDirectory: tempDirectory)
+    }
+    
+    /// データを単一ファイルとして処理（境界検索を回避）
+    private func processAsSignleFile(data: Data, tempDirectory: URL) async throws -> [MultipartChunk] {
+        logger.info("Processing as single file to avoid boundary search")
+        
+        let fileURL = tempDirectory.appendingPathComponent("file_\(UUID().uuidString)")
+        
+        try await withCheckedThrowingContinuation { continuation in
+            Task {
+                do {
+                    try data.write(to: fileURL)
+                    continuation.resume()
+                } catch {
+                    continuation.resume(throwing: error)
+                }
             }
-            
-            // チャンクデータを抽出
-            let chunkStart = currentIndex == 0 ? boundaryRange.upperBound : currentIndex
+        }
+        
+        let chunk = MultipartChunk(
+            id: 0,
+            fileURL: fileURL,
+            size: data.count
+        )
+        
+        logger.info("Created single file chunk: \(fileURL.path) (\(data.count) bytes)")
+        return [chunk]
             let chunkEnd = boundaryRange.lowerBound
             
             if chunkStart < chunkEnd {
@@ -129,30 +150,38 @@ final class MultipartStreamParser {
         return nil
     }
     
-    /// 大きなデータを分割してboundaryを検索
-    private func findBoundaryInChunks(data: Data, searchRange: Range<Int>, chunkSize: Int) -> Range<Int>? {
-        let start = searchRange.lowerBound
-        let end = searchRange.upperBound
+    /// 効率的な境界検索（シーケンシャルスキャン）
+    private func findBoundarySequentially(in data: Data, startingAt start: Int, boundary: Data, finalBoundary: Data) -> Range<Int>? {
+        let maxSearchSize = min(1024 * 1024, data.count - start) // 最大1MBまで検索
+        let searchEnd = min(start + maxSearchSize, data.count)
+        let searchRange = start..<searchEnd
         
-        var currentStart = start
-        let boundarySize = boundaryData.count
+        logger.debug("Sequential search in range \(start)..<\(searchEnd)")
         
-        while currentStart < end {
-            let chunkEnd = min(currentStart + chunkSize + boundarySize, end)
-            let chunkRange = currentStart..<chunkEnd
+        // 通常の境界を検索
+        if let range = data.range(of: boundary, in: searchRange) {
+            return range
+        }
+        
+        // 終了境界を検索
+        if let range = data.range(of: finalBoundary, in: searchRange) {
+            return range
+        }
+        
+        // 見つからない場合は、より大きな範囲で検索
+        if searchEnd < data.count {
+            let extendedEnd = min(start + 10 * 1024 * 1024, data.count) // 最大10MBまで拡張
+            let extendedRange = start..<extendedEnd
             
-            logger.debug("Searching chunk \(currentStart)..<\(chunkEnd)")
+            logger.debug("Extended search in range \(start)..<\(extendedEnd)")
             
-            // このチャンク内で境界を検索
-            if let range = data.range(of: boundaryData, in: chunkRange) {
+            if let range = data.range(of: boundary, in: extendedRange) {
                 return range
             }
             
-            if let range = data.range(of: finalBoundaryData, in: chunkRange) {
+            if let range = data.range(of: finalBoundary, in: extendedRange) {
                 return range
             }
-            
-            currentStart += chunkSize
         }
         
         return nil

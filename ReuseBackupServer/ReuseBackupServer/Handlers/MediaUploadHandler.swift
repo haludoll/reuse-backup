@@ -42,8 +42,26 @@ final class MediaUploadHandler: HTTPHandlerAdapter {
         }
         
         do {
-            // ストリーミングマルチパートデータを解析
-            let multipartData = try await parseMultipartFormDataStreaming(body: body, contentType: contentType)
+            // 大容量ファイルの場合は従来のパーサーを使用（より安定）
+            let multipartData: [String: MultipartStreamValue]
+            
+            if body.count > 50 * 1024 * 1024 { // 50MB以上の場合は従来のパーサーを使用
+                logger.info("Large file detected (\(body.count) bytes), using traditional parser")
+                let traditionalData = try parseMultipartFormData(body: body, contentType: contentType)
+                
+                // MultipartValueをMultipartStreamValueに変換
+                multipartData = traditionalData.mapValues { value in
+                    MultipartStreamValue(
+                        data: value.data,
+                        filename: value.filename,
+                        contentType: value.contentType,
+                        tempFileURL: nil
+                    )
+                }
+            } else {
+                // 小さなファイルの場合はストリーミングパーサーを使用
+                multipartData = try await parseMultipartFormDataStreaming(body: body, contentType: contentType)
+            }
             
             // デバッグ: 受信したフィールドをログ出力
             logger.info("Received multipart fields: \(multipartData.keys)")

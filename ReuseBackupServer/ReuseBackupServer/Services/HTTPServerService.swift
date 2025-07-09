@@ -86,9 +86,11 @@ final class HTTPServerService: HTTPServerServiceProtocol {
 
         let statusHandler = StatusHandler(port: port, startTime: currentStartTime)
         let messageHandler = MessageHandler(messageManager: messageManager)
+        let mediaUploadHandler = MediaUploadHandler()
 
         await server.appendRoute(HTTPRouteInfo(method: .get, path: "/api/status"), to: statusHandler)
         await server.appendRoute(HTTPRouteInfo(method: .post, path: "/api/message"), to: messageHandler)
+        await server.appendRoute(HTTPRouteInfo(method: .post, path: "/api/media/upload"), to: mediaUploadHandler)
 
         // server.run()は永続的にawaitするため、先にインスタンスを保存
         self.server = server

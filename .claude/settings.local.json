@@ -54,7 +54,11 @@
       "Bash(./claude-parallel.sh:*)",
       "Bash(bash:*)",
       "mcp__github__update_pull_request",
-      "Bash(git --git-dir=/Users/shota-nishizawa/dev/worktree-issue-71-specs-documentation/.git --work-tree=/Users/shota-nishizawa/dev/worktree-issue-71-specs-documentation status)"
+      "Bash(git --git-dir=/Users/shota-nishizawa/dev/worktree-issue-71-specs-documentation/.git --work-tree=/Users/shota-nishizawa/dev/worktree-issue-71-specs-documentation status)",
+      "Bash(git merge:*)",
+      "Bash(gh pr close:*)",
+      "Bash(./worktree-manager.sh delete:*)",
+      "Bash(git branch:*)"
     ],
     "deny": []
   }

@@ -178,6 +178,11 @@ extension Data {
     func range(of data: Data, in range: Range<Int>) -> Range<Int>? {
         let searchData = subdata(in: range)
         
+        // 検索対象のデータが検索範囲より大きい場合は見つからない
+        guard searchData.count >= data.count else {
+            return nil
+        }
+        
         for i in 0..<searchData.count - data.count + 1 {
             let candidateRange = i..<i + data.count
             let candidate = searchData.subdata(in: candidateRange)

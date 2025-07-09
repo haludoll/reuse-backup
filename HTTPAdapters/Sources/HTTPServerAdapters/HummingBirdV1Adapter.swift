@@ -40,7 +40,7 @@ import HTTPTypes
                 let configuration = HBApplication.Configuration(
                     address: .hostname("0.0.0.0", port: Int(port)),
                     serverName: "ReuseBackup-HTTPS",
-                    maxUploadSize: 1024 * 1024 * 1024 // 1GB制限に設定
+                    maxUploadSize: Int.max // 実質的に制限なし
                 )
 
                 app = HBApplication(configuration: configuration)
@@ -53,7 +53,7 @@ import HTTPTypes
                 let configuration = HBApplication.Configuration(
                     address: .hostname("0.0.0.0", port: Int(port)),
                     serverName: "ReuseBackup-HTTP",
-                    maxUploadSize: 1024 * 1024 * 1024 // 1GB制限に設定
+                    maxUploadSize: Int.max // 実質的に制限なし
                 )
 
                 app = HBApplication(configuration: configuration)

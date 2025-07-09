@@ -781,7 +781,7 @@ public final class TLSCertificateManager: Sendable {
     }
 
     private func encodeASN1BitString(_ data: Data) -> Data {
-        Data([0x03, UInt8(data.count + 1), 0x00]) + data
+        Data([0x03]) + encodeASN1Length(data.count + 1) + Data([0x00]) + data
     }
 
     private func encodeASN1Length(_ length: Int) -> Data {

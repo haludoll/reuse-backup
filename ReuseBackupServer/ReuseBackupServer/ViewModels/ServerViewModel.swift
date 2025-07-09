@@ -77,7 +77,7 @@ final class ServerViewModel: ObservableObject {
             autoStartEnabled = true
         }
         
-        logger.info("ServerViewModel initialized (auto-start: \(autoStartEnabled))")
+        logger.info("ServerViewModel initialized (auto-start: \(self.autoStartEnabled))")
     }
 
     // MARK: - Server Control Methods

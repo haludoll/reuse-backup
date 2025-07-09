@@ -300,7 +300,6 @@ final class MultipartStreamParser {
         
         return nil
     }
-}
 
 // MARK: - Supporting Types
 

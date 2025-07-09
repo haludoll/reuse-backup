@@ -68,9 +68,9 @@ public final class TLSCertificateManager: Sendable {
     /// 既存の証明書があれば使用し、なければ新規生成
     /// - Returns: TLSConfiguration
     /// - Throws: CertificateError
-    public func getTLSConfiguration() throws -> TLSConfiguration {
-        let certificateChain = try getCertificateChain()
-        let privateKey = try getPrivateKey()
+    public func getTLSConfiguration() async throws -> TLSConfiguration {
+        let certificateChain = try await getCertificateChain()
+        let privateKey = try await getPrivateKey()
 
         return TLSConfiguration.makeServerConfiguration(
             certificateChain: certificateChain.map { .certificate($0) },
@@ -81,7 +81,7 @@ public final class TLSCertificateManager: Sendable {
     /// 証明書チェーンを取得
     /// - Returns: 証明書チェーン
     /// - Throws: CertificateError
-    private func getCertificateChain() throws -> [NIOSSLCertificate] {
+    private func getCertificateChain() async throws -> [NIOSSLCertificate] {
         // まずKeychainから証明書を取得を試行
         if let certificateData = loadCertificateFromKeychain() {
             do {
@@ -125,13 +125,13 @@ public final class TLSCertificateManager: Sendable {
         }
 
         // 新規証明書を生成
-        return try generateSelfSignedCertificate()
+        return try await generateSelfSignedCertificate()
     }
 
     /// 秘密鍵を取得
     /// - Returns: 秘密鍵
     /// - Throws: CertificateError
-    private func getPrivateKey() throws -> NIOSSLPrivateKey {
+    private func getPrivateKey() async throws -> NIOSSLPrivateKey {
         // まずKeychainから秘密鍵を取得を試行
         if let privateKeyData = loadPrivateKeyFromKeychain() {
             do {
@@ -153,11 +153,13 @@ public final class TLSCertificateManager: Sendable {
     /// 自己署名証明書を生成
     /// - Returns: 証明書チェーン
     /// - Throws: CertificateError
-    private func generateSelfSignedCertificate() throws -> [NIOSSLCertificate] {
+    private func generateSelfSignedCertificate() async throws -> [NIOSSLCertificate] {
         print("🔐 TLSCertificateManager: デバイス固有の新しい証明書を生成中...")
 
-        // CryptoKitを使用してデバイス固有の証明書を動的に生成
-        let (certificateData, privateKeyData) = try generateDeviceSpecificCertificate()
+        // CryptoKitを使用してデバイス固有の証明書を動的に生成（非同期実行）
+        let (certificateData, privateKeyData) = try await Task.detached {
+            try self.generateDeviceSpecificCertificate()
+        }.value
 
         // 生成した証明書と秘密鍵をKeychainに保存
         try saveCertificateToKeychain(certificateData)
@@ -454,16 +456,13 @@ public final class TLSCertificateManager: Sendable {
         let validFrom = Date()
         let validTo = validFrom.addingTimeInterval(TimeInterval(Self.certificateValidityDays * 24 * 60 * 60))
 
-        // 自己署名証明書を生成
-        let certificatePEM = try generateSelfSignedRSACertificate(
+        // 自己署名証明書を生成（Security.frameworkベース）
+        let (certificatePEM, privateKeyPEM) = try generateSecurityFrameworkCertificate(
             keyPair: rsaKeyPair,
             subjectName: subjectName,
             validFrom: validFrom,
             validTo: validTo
         )
-
-        // RSA秘密鍵をPEM形式でエクスポート
-        let privateKeyPEM = try exportRSAPrivateKeyToPEM(rsaKeyPair.0)
 
         return (Array(certificatePEM.utf8), Array(privateKeyPEM.utf8))
     }
@@ -508,6 +507,43 @@ public final class TLSCertificateManager: Sendable {
 
         SecItemAdd(addQuery as CFDictionary, nil)
         return newDeviceId
+    }
+
+    /// Security.frameworkベースの証明書生成
+    /// - Parameters:
+    ///   - keyPair: RSA鍵ペア
+    ///   - subjectName: Subject Name
+    ///   - validFrom: 有効期間開始日時
+    ///   - validTo: 有効期間終了日時
+    /// - Returns: PEM形式の証明書と秘密鍵のタプル
+    /// - Throws: CertificateError
+    private func generateSecurityFrameworkCertificate(
+        keyPair: (SecKey, SecKey),
+        subjectName: String,
+        validFrom: Date,
+        validTo: Date
+    ) throws -> (String, String) {
+        let (privateKey, publicKey) = keyPair
+
+        // 簡易的な自己署名証明書をPKCS#1形式で生成
+        // Subject Name: CN=ReuseBackup-{deviceId}
+        // Issuer Name: 同じ（自己署名）
+        // 有効期限: validFrom - validTo
+        // 公開鍵: RSA公開鍵
+        // 署名: RSA-SHA256
+
+        // 改善されたASN.1エンコーディングで証明書を生成
+        let certificatePEM = try generateSelfSignedRSACertificate(
+            keyPair: keyPair,
+            subjectName: subjectName,
+            validFrom: validFrom,
+            validTo: validTo
+        )
+
+        // RSA秘密鍵をPEM形式でエクスポート
+        let privateKeyPEM = try exportRSAPrivateKeyToPEM(privateKey)
+
+        return (certificatePEM, privateKeyPEM)
     }
 
     /// RSA秘密鍵をPEM形式でエクスポート（実際のRSA秘密鍵用）
@@ -612,25 +648,45 @@ public final class TLSCertificateManager: Sendable {
         validFrom: Date,
         validTo: Date
     ) throws -> Data {
-        // 簡易ASN.1構造（実際のX.509実装では適切なASN.1エンコーダーを使用）
-        let version = Data([0x02, 0x01, 0x02]) // Version 3
+        // X.509 v3証明書構造に準拠
+        // Version (明示的にv3を指定)
+        let versionData = Data([0x02, 0x01, 0x02]) // Version 3 (2)
+        let version = Data([0xA0, 0x03]) + versionData // [0] EXPLICIT
+
+        // Serial Number
         let serial = encodeASN1Integer(serialNumber)
-        let algorithm = encodeASN1ObjectIdentifier("1.2.840.113549.1.1.11") // SHA256withRSA
+
+        // Signature Algorithm (SHA256withRSA)
+        let sigAlgOid = encodeASN1ObjectIdentifier("1.2.840.113549.1.1.11") // SHA256withRSA
+        let sigAlgNull = Data([0x05, 0x00]) // NULL
+        let signatureAlgorithm = encodeASN1Sequence(sigAlgOid + sigAlgNull)
+
+        // Issuer Name (same as subject for self-signed)
         let issuer = encodeASN1DistinguishedName(subjectName)
+
+        // Validity Period
         let validity = encodeASN1Validity(from: validFrom, to: validTo)
+
+        // Subject Name
         let subject = encodeASN1DistinguishedName(subjectName)
+
+        // Subject Public Key Info
         let publicKeyInfo = encodeASN1PublicKeyInfo(publicKeyData)
+
+        // Basic Extensions (for X.509 v3)
+        let extensions = try buildExtensions()
 
         var tbsData = Data()
         tbsData.append(version)
         tbsData.append(serial)
-        tbsData.append(algorithm)
+        tbsData.append(signatureAlgorithm)
         tbsData.append(issuer)
         tbsData.append(validity)
         tbsData.append(subject)
         tbsData.append(publicKeyInfo)
+        tbsData.append(extensions)
 
-        return tbsData
+        return encodeASN1Sequence(tbsData)
     }
 
     /// TBSCertificateに署名
@@ -660,15 +716,20 @@ public final class TLSCertificateManager: Sendable {
     /// - Returns: DER形式の証明書
     /// - Throws: CertificateError
     private func assembleCertificate(tbsCertificate: Data, signature: Data) throws -> Data {
-        let algorithm = encodeASN1ObjectIdentifier("1.2.840.113549.1.1.11") // SHA256withRSA
+        // Signature Algorithm (完全な AlgorithmIdentifier)
+        let sigAlgOid = encodeASN1ObjectIdentifier("1.2.840.113549.1.1.11") // SHA256withRSA
+        let sigAlgNull = Data([0x05, 0x00]) // NULL
+        let signatureAlgorithm = encodeASN1Sequence(sigAlgOid + sigAlgNull)
+
+        // Signature Value (BIT STRING)
         let signatureBitString = encodeASN1BitString(signature)
 
         var certificateData = Data()
         certificateData.append(tbsCertificate)
-        certificateData.append(algorithm)
+        certificateData.append(signatureAlgorithm)
         certificateData.append(signatureBitString)
 
-        // SEQUENCE ラッパー
+        // 最終的なCertificate SEQUENCE
         return encodeASN1Sequence(certificateData)
     }
 
@@ -781,7 +842,7 @@ public final class TLSCertificateManager: Sendable {
     }
 
     private func encodeASN1BitString(_ data: Data) -> Data {
-        Data([0x03, UInt8(data.count + 1), 0x00]) + data
+        Data([0x03]) + encodeASN1Length(data.count + 1) + Data([0x00]) + data
     }
 
     private func encodeASN1Length(_ length: Int) -> Data {
@@ -796,6 +857,32 @@ public final class TLSCertificateManager: Sendable {
             }
             return Data([0x80 | UInt8(bytes.count)]) + bytes
         }
+    }
+
+    /// X.509 v3 Extensions を構築
+    /// - Returns: Extensions ASN.1データ
+    /// - Throws: CertificateError
+    private func buildExtensions() throws -> Data {
+        var extensions = Data()
+
+        // Basic Constraints Extension (CA:FALSE)
+        let basicConstraintsOid = encodeASN1ObjectIdentifier("2.5.29.19") // basicConstraints
+        let basicConstraintsValue = Data([0x30, 0x00]) // SEQUENCE {} - CA:FALSE (デフォルト)
+        let basicConstraintsOctetString = Data([0x04, UInt8(basicConstraintsValue.count)]) + basicConstraintsValue
+        let basicConstraintsExt = encodeASN1Sequence(basicConstraintsOid + basicConstraintsOctetString)
+        extensions.append(basicConstraintsExt)
+
+        // Key Usage Extension
+        let keyUsageOid = encodeASN1ObjectIdentifier("2.5.29.15") // keyUsage
+        // Key Usage: Digital Signature (0x80) + Key Encipherment (0x20) = 0xA0
+        let keyUsageBits = Data([0x03, 0x02, 0x05, 0xA0]) // BIT STRING
+        let keyUsageOctetString = Data([0x04, UInt8(keyUsageBits.count)]) + keyUsageBits
+        let keyUsageExt = encodeASN1Sequence(keyUsageOid + keyUsageOctetString)
+        extensions.append(keyUsageExt)
+
+        // Extensions は [3] EXPLICIT で囲む
+        let extensionsSequence = encodeASN1Sequence(extensions)
+        return Data([0xA3]) + encodeASN1Length(extensionsSequence.count) + extensionsSequence
     }
 }
 

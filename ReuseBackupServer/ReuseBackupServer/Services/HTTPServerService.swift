@@ -109,6 +109,11 @@ final class HTTPServerService: HTTPServerServiceProtocol {
                 self.bonjourService?.stopAdvertising()
                 self.bonjourService = nil
                 logger.error("HTTPS server stopped with error: \(error.localizedDescription)")
+                logger.error("Error details: \(error)")
+                if let nsError = error as? NSError {
+                    logger.error("Error domain: \(nsError.domain), code: \(nsError.code)")
+                    logger.error("User info: \(nsError.userInfo)")
+                }
             }
         }
 

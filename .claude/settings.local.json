@@ -41,7 +41,9 @@
       "mcp__github__list_pull_requests",
       "Bash(cat:*)",
       "Bash(git worktree:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(git worktree:*)",
+      "Bash(swift build:*)"
     ],
     "deny": []
   }

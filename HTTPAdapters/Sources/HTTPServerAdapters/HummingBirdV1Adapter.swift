@@ -39,7 +39,8 @@ import HTTPTypes
                 // HTTPS用のHummingBird設定
                 let configuration = HBApplication.Configuration(
                     address: .hostname("0.0.0.0", port: Int(port)),
-                    serverName: "ReuseBackup-HTTPS"
+                    serverName: "ReuseBackup-HTTPS",
+                    maxUploadSize: 1024 * 1024 * 1024 // 1GB制限に設定
                 )
 
                 app = HBApplication(configuration: configuration)
@@ -51,7 +52,8 @@ import HTTPTypes
                 // HTTP用のHummingBird設定
                 let configuration = HBApplication.Configuration(
                     address: .hostname("0.0.0.0", port: Int(port)),
-                    serverName: "ReuseBackup-HTTP"
+                    serverName: "ReuseBackup-HTTP",
+                    maxUploadSize: 1024 * 1024 * 1024 // 1GB制限に設定
                 )
 
                 app = HBApplication(configuration: configuration)

@@ -17,7 +17,10 @@ struct MessageHandlerTests {
 
     @Test("when_postWithValidMessage_then_returnsSuccessResponse")
     func validMessagePost() async throws {
-        let messageRequest = Components.Schemas.MessageRequest(message: "Test message")
+        let messageRequest = Components.Schemas.MessageRequest(
+            message: "Test message",
+            timestamp: Date()
+        )
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         let requestBody = try encoder.encode(messageRequest)
@@ -45,7 +48,7 @@ struct MessageHandlerTests {
 
         let messages = await messageManager.getMessages()
         #expect(messages.count == 1)
-        #expect(messages.first?.content == "Test message")
+        #expect(messages.first == "Test message")
     }
 
     @Test("when_postWithInvalidJSON_then_returnsBadRequest")
@@ -142,7 +145,10 @@ struct MessageHandlerTests {
 
     @Test("when_postWithEmptyMessage_then_returnsSuccessResponse")
     func emptyMessagePost() async throws {
-        let messageRequest = Components.Schemas.MessageRequest(message: "")
+        let messageRequest = Components.Schemas.MessageRequest(
+            message: "",
+            timestamp: Date()
+        )
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         let requestBody = try encoder.encode(messageRequest)
@@ -167,13 +173,16 @@ struct MessageHandlerTests {
         #expect(messageResponse.received == true)
 
         let messages = await messageManager.getMessages()
-        #expect(messages.last?.content == "")
+        #expect(messages.last == "")
     }
 
     @Test("when_postWithLongMessage_then_returnsSuccessResponse")
     func longMessagePost() async throws {
         let longMessage = String(repeating: "a", count: 1000)
-        let messageRequest = Components.Schemas.MessageRequest(message: longMessage)
+        let messageRequest = Components.Schemas.MessageRequest(
+            message: longMessage,
+            timestamp: Date()
+        )
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         let requestBody = try encoder.encode(messageRequest)
@@ -190,6 +199,6 @@ struct MessageHandlerTests {
         #expect(response.status == .ok)
 
         let messages = await messageManager.getMessages()
-        #expect(messages.last?.content == longMessage)
+        #expect(messages.last == longMessage)
     }
 }

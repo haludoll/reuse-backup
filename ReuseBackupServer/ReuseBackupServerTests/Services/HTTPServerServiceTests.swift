@@ -371,8 +371,8 @@ struct HTTPServerServiceProtocolTests {
     }
 
     @Test func protocol_polymorphism() async throws {
-        let services: [HTTPServerServiceProtocol] = [
-            await HTTPServerService(),
+        let services: [HTTPServerServiceProtocol] = await [
+            HTTPServerService(),
             MockHTTPServerService(),
         ]
 

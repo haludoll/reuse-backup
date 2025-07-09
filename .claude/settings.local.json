@@ -53,7 +53,8 @@
       "mcp__github__list_workflows",
       "Bash(./claude-parallel.sh:*)",
       "Bash(bash:*)",
-      "mcp__github__update_pull_request"
+      "mcp__github__update_pull_request",
+      "Bash(git --git-dir=/Users/shota-nishizawa/dev/worktree-issue-71-specs-documentation/.git --work-tree=/Users/shota-nishizawa/dev/worktree-issue-71-specs-documentation status)"
     ],
     "deny": []
   }

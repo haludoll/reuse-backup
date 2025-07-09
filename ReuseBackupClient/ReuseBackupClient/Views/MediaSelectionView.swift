@@ -40,6 +40,13 @@ struct MediaSelectionView: View {
                     await viewModel.fetchRecentMedia()
                 }
             }
+            .onChange(of: viewModel.photoLibraryAuthorizationStatus) { status in
+                Task {
+                    if status == .authorized || status == .limited {
+                        await viewModel.fetchRecentMedia()
+                    }
+                }
+            }
         }
     }
 

@@ -131,7 +131,14 @@ class MediaUploadViewModel: ObservableObject {
 
     /// フォトライブラリアクセス権限を要求
     func requestPhotoLibraryAccess() async -> Bool {
-        await photoLibraryManager.requestAuthorization()
+        let granted = await photoLibraryManager.requestAuthorization()
+        
+        // 権限が許可された場合、自動的にメディアを取得
+        if granted {
+            await fetchRecentMedia()
+        }
+        
+        return granted
     }
 
     /// 最新メディアを取得

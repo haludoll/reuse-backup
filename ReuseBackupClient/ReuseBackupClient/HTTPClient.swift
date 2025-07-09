@@ -2,7 +2,7 @@ import Foundation
 import APISharedModels
 
 class HTTPClient: NSObject {
-    private let session: URLSession
+    private var session: URLSession
     private let decoder: JSONDecoder
     private let encoder: JSONEncoder
     
@@ -23,6 +23,9 @@ class HTTPClient: NSObject {
         
         encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
+        
+        // 初期化時は一時的なセッションを作成
+        session = URLSession(configuration: config)
         
         super.init()
         
@@ -114,7 +117,7 @@ enum HTTPClientError: LocalizedError {
         case .decodingError(let error):
             return "デコードエラー: \(error.localizedDescription)"
         case .serverError(let errorResponse):
-            return "サーバーエラー: \(errorResponse.error ?? "不明なエラー")"
+            return "サーバーエラー: \(errorResponse.error)"
         }
     }
 }

@@ -316,7 +316,7 @@ struct UploadItemRow: View {
                     .font(.caption)
                     .foregroundColor(.green)
             }
-        case let .failed(error):
+        case .failed:
             HStack(spacing: 4) {
                 Image(systemName: "exclamationmark.circle.fill")
                     .foregroundColor(.red)
@@ -371,18 +371,20 @@ struct ServerSelectionSheet: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    List(serverDiscovery.discoveredServers, id: \.name) { server in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(server.name)
-                                .font(.headline)
-                            Text(server.address)
-                                .font(.body)
-                                .foregroundColor(.secondary)
-                        }
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            if let url = URL(string: "http://\(server.address):\(server.port)") {
-                                onServerSelected(url)
+                    List {
+                        ForEach(serverDiscovery.discoveredServers, id: \.name) { server in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(server.name)
+                                    .font(.headline)
+                                Text(server.address)
+                                    .font(.body)
+                                    .foregroundColor(.secondary)
+                            }
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                if let url = URL(string: "http://\(server.address):\(server.port)") {
+                                    onServerSelected(url)
+                                }
                             }
                         }
                     }

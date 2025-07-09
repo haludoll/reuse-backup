@@ -62,10 +62,16 @@ final class MultipartStreamParser {
         var currentIndex = 0
         var chunkCounter = 0
         
+        logger.info("Starting chunk processing for \(data.count) bytes")
+        
         // boundaryでデータを分割
         while currentIndex < data.count {
+            let progress = Double(currentIndex) / Double(data.count) * 100
+            logger.info("Processing chunk \(chunkCounter), progress: \(String(format: "%.1f", progress))%")
+            
             // 次のboundaryを検索
             guard let boundaryRange = findNextBoundary(in: data, startingAt: currentIndex) else {
+                logger.info("No more boundaries found at index \(currentIndex)")
                 break
             }
             
@@ -98,15 +104,55 @@ final class MultipartStreamParser {
     /// 次のboundaryの位置を検索
     private func findNextBoundary(in data: Data, startingAt start: Int) -> Range<Int>? {
         let searchRange = start..<data.count
+        let searchSize = searchRange.count
+        
+        logger.debug("Searching for boundary in range \(start)..<\(data.count) (size: \(searchSize) bytes)")
+        
+        // 大きなデータの場合は段階的に検索
+        let maxSearchSize = 10 * 1024 * 1024 // 10MB単位で検索
+        if searchSize > maxSearchSize {
+            logger.warning("Large search range detected (\(searchSize) bytes), using chunked search")
+            return findBoundaryInChunks(data: data, searchRange: searchRange, chunkSize: maxSearchSize)
+        }
         
         // 通常のboundaryを検索
         if let range = data.range(of: boundaryData, in: searchRange) {
+            logger.debug("Found boundary at range \(range)")
             return range
         }
         
         // 終了boundaryを検索
         if let range = data.range(of: finalBoundaryData, in: searchRange) {
             return range
+        }
+        
+        return nil
+    }
+    
+    /// 大きなデータを分割してboundaryを検索
+    private func findBoundaryInChunks(data: Data, searchRange: Range<Int>, chunkSize: Int) -> Range<Int>? {
+        let start = searchRange.lowerBound
+        let end = searchRange.upperBound
+        
+        var currentStart = start
+        let boundarySize = boundaryData.count
+        
+        while currentStart < end {
+            let chunkEnd = min(currentStart + chunkSize + boundarySize, end)
+            let chunkRange = currentStart..<chunkEnd
+            
+            logger.debug("Searching chunk \(currentStart)..<\(chunkEnd)")
+            
+            // このチャンク内で境界を検索
+            if let range = data.range(of: boundaryData, in: chunkRange) {
+                return range
+            }
+            
+            if let range = data.range(of: finalBoundaryData, in: chunkRange) {
+                return range
+            }
+            
+            currentStart += chunkSize
         }
         
         return nil

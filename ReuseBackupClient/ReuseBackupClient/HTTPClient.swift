@@ -16,8 +16,8 @@ class HTTPClient: NSObject {
     override init() {
         // mDNS接続用に最適化したURLSession設定
         let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 15.0 // mDNS解決のため長めに設定
-        config.timeoutIntervalForResource = 30.0
+        config.timeoutIntervalForRequest = 60.0 // 大容量ファイル対応のため延長
+        config.timeoutIntervalForResource = 600.0 // 10分に延長（大容量ファイル対応）
 
         decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601

@@ -50,7 +50,9 @@
       "mcp__github__list_pull_requests",
       "mcp__github__get_pull_request_comments",
       "mcp__github__list_workflow_runs",
-      "mcp__github__list_workflows"
+      "mcp__github__list_workflows",
+      "Bash(./claude-parallel.sh:*)",
+      "Bash(bash:*)"
     ],
     "deny": []
   }

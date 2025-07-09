@@ -45,13 +45,29 @@ final class MediaUploadHandler: HTTPHandlerAdapter {
             // ストリーミングマルチパートデータを解析
             let multipartData = try await parseMultipartFormDataStreaming(body: body, contentType: contentType)
             
+            // デバッグ: 受信したフィールドをログ出力
+            logger.info("Received multipart fields: \(multipartData.keys)")
+            for (key, value) in multipartData {
+                if key == "file" {
+                    logger.info("Field '\(key)': <binary data size: \(value.data?.count ?? 0)>")
+                } else {
+                    logger.info("Field '\(key)': \(value.string ?? "<nil>")")
+                }
+            }
+            
             // 必須フィールドをバリデーション
             guard let fileValue = multipartData["file"],
                   let filename = multipartData["filename"]?.string,
                   let mediaTypeString = multipartData["mediaType"]?.string,
                   let timestampString = multipartData["timestamp"]?.string else {
+                
+                let missingFields = ["file", "filename", "mediaType", "timestamp"].filter { key in
+                    multipartData[key] == nil
+                }
+                logger.error("Missing required fields: \(missingFields)")
+                
                 return createErrorResponse(
-                    message: "Missing required fields: file, filename, mediaType, timestamp",
+                    message: "Missing required fields: \(missingFields.joined(separator: ", "))",
                     status: .badRequest
                 )
             }
@@ -120,9 +136,23 @@ final class MediaUploadHandler: HTTPHandlerAdapter {
             
         } catch {
             logger.error("Media upload failed: \(error.localizedDescription)")
+            logger.error("Error details: \(error)")
+            
+            // より具体的なエラーメッセージを提供
+            let errorMessage: String
+            let statusCode: HTTPResponse.Status
+            
+            if let mediaError = error as? MediaUploadError {
+                errorMessage = mediaError.localizedDescription
+                statusCode = .badRequest
+            } else {
+                errorMessage = "Failed to process upload: \(error.localizedDescription)"
+                statusCode = .internalServerError
+            }
+            
             return createErrorResponse(
-                message: "Failed to process upload: \(error.localizedDescription)",
-                status: .internalServerError
+                message: errorMessage,
+                status: statusCode
             )
         }
     }

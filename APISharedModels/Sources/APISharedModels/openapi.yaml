@@ -124,6 +124,130 @@ paths:
                     version: "1.0.0"
                     serverTime: "2025-07-01T12:00:00Z"
 
+  /api/media/upload:
+    post:
+      summary: 写真・動画アップロード
+      description: |
+        クライアントから写真・動画ファイルをサーバーにアップロードする。
+        
+        **機能:**
+        - 写真・動画のマルチパートアップロード
+        - ファイルサイズ制限なし（ストレージ容量まで）
+        - 基本的なファイル情報の記録
+        - ストリーミング処理による効率的な転送
+        
+        **対応形式:**
+        - 写真: JPEG, PNG, HEIC, GIF, WebP
+        - 動画: MOV, MP4, M4V
+      operationId: uploadMedia
+      tags:
+        - Media
+      requestBody:
+        description: アップロードするメディアファイルと情報
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+                - filename
+                - mimeType
+                - timestamp
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: アップロードするファイルデータ
+                filename:
+                  type: string
+                  description: ファイル名
+                  example: "IMG_1234.heic"
+                mimeType:
+                  type: string
+                  description: ファイルのMIMEタイプ
+                  example: "image/heic"
+                timestamp:
+                  type: string
+                  format: date-time
+                  description: ファイル作成時刻（ISO 8601形式）
+                  example: "2025-07-01T12:00:00Z"
+            examples:
+              photo_upload:
+                summary: 写真アップロード
+                value:
+                  filename: "IMG_1234.heic"
+                  mimeType: "image/heic"
+                  timestamp: "2025-07-01T12:00:00Z"
+              video_upload:
+                summary: 動画アップロード
+                value:
+                  filename: "VID_5678.mov"
+                  mimeType: "video/quicktime"
+                  timestamp: "2025-07-01T12:00:00Z"
+      responses:
+        '200':
+          description: アップロード成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaUploadResponse'
+              examples:
+                photo_success:
+                  summary: 写真アップロード成功
+                  value:
+                    status: "success"
+                    mediaId: "uuid-1234-5678"
+                    filename: "IMG_1234.heic"
+                    mediaType: "photo"
+                    filesize: 3145728
+                    serverTimestamp: "2025-07-01T12:00:01Z"
+                video_success:
+                  summary: 動画アップロード成功
+                  value:
+                    status: "success"
+                    mediaId: "uuid-9876-5432"
+                    filename: "VID_5678.mov"
+                    mediaType: "video"
+                    filesize: 52428800
+                    serverTimestamp: "2025-07-01T12:00:01Z"
+        '400':
+          description: 無効なリクエスト
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_file_type:
+                  summary: 無効なファイル形式
+                  value:
+                    status: "error"
+                    error: "Unsupported file type"
+        '507':
+          description: ストレージ容量不足
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                insufficient_storage:
+                  summary: ストレージ容量不足
+                  value:
+                    status: "error"
+                    error: "Insufficient storage space"
+        '500':
+          description: サーバー内部エラー
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                server_error:
+                  summary: サーバーエラー
+                  value:
+                    status: "error"
+                    error: "Internal server error"
+
 components:
   schemas:
     MessageRequest:
@@ -230,6 +354,53 @@ components:
         version: "1.0.0"
         serverTime: "2025-07-01T12:00:00Z"
 
+    MediaUploadResponse:
+      type: object
+      required:
+        - status
+        - serverTimestamp
+      properties:
+        status:
+          type: string
+          enum: ["success", "error"]
+          description: アップロード処理のステータス
+          example: "success"
+        mediaId:
+          type: string
+          description: 成功時に生成されるメディアID（UUID）
+          example: "uuid-1234-5678"
+        filename:
+          type: string
+          description: 成功時のファイル名
+          example: "IMG_1234.heic"
+        mediaType:
+          type: string
+          enum: ["photo", "video"]
+          description: メディアタイプ
+          example: "photo"
+        filesize:
+          type: integer
+          format: int64
+          description: ファイルサイズ（バイト）
+          example: 3145728
+          minimum: 0
+        serverTimestamp:
+          type: string
+          format: date-time
+          description: サーバー処理時刻（ISO 8601形式）
+          example: "2025-07-01T12:00:01Z"
+        error:
+          type: string
+          description: エラー時のメッセージ
+          example: "Unsupported file type"
+      example:
+        status: "success"
+        mediaId: "uuid-1234-5678"
+        filename: "IMG_1234.heic"
+        mediaType: "photo"
+        filesize: 3145728
+        serverTimestamp: "2025-07-01T12:00:01Z"
+
   securitySchemes: {}
 
 tags:
@@ -237,3 +408,5 @@ tags:
     description: メッセージ送受信機能
   - name: Status
     description: サーバーステータス管理
+  - name: Media
+    description: 写真・動画アップロード機能

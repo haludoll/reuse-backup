@@ -15,7 +15,7 @@ ReuseBackupは、古いiPhoneを写真・動画のローカルバックアップ
 
 - **言語**: Swift（サーバー: 5.9+、クライアント: 6.0+）
 - **フレームワーク**: 
-  - サーバー: FlyingFox HTTPサーバー、Bonjourサービス発見
+  - サーバー: HummingBird HTTPサーバー、Bonjourサービス発見
   - クライアント: SwiftUI、HTTPリクエスト用URLSession
 - **アーキテクチャ**: 単方向HTTP通信（クライアント → サーバー）
 - **プラットフォーム**: ローカル専用・プライバシー重視のiOS

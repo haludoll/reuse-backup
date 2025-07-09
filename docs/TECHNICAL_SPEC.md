@@ -3,7 +3,7 @@
 ## アーキテクチャ
 
 ### 基本構成
-- **古いiPhone**: HTTPサーバー（[FlyingFox](https://github.com/swhitty/FlyingFox)）
+- **古いiPhone**: HTTPサーバー（HummingBird）
 - **新しいiPhone**: HTTPクライアント（URLSession）
 - **通信**: HTTP/1.1 + Bonjour発見
 - **方向**: クライアント → サーバー（一方向）
@@ -13,7 +13,7 @@
 ### 古いiPhone (サーバー)
 - **OS**: iOS 15+
 - **言語**: Swift 5.9+
-- **HTTPサーバー**: FlyingFox
+- **HTTPサーバー**: HummingBird
 - **サービス発見**: Network Framework (Bonjour)
 
 ### 新しいiPhone (クライアント)

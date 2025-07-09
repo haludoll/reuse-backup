@@ -9,7 +9,7 @@ ReuseBackupは、古いiPhoneを写真・動画のローカルバックアップ
 1. **ReuseBackupServer** - 古いiPhone（iOS 15+）で動作、HTTPサーバーとして機能
 2. **ReuseBackupClient** - 新しいiPhone（iOS 17+）で動作、サーバーにコンテンツをアップロード
 
-**現在のステータス**: 計画・ドキュメント作成段階 - ソースコードは未実装
+**現在のステータス**: 積極的な開発段階 - 基本機能実装済み、写真・動画アップロード機能のサーバーサイド実装中（Issue #47）
 
 ## 技術スタック
 
@@ -19,6 +19,8 @@ ReuseBackupは、古いiPhoneを写真・動画のローカルバックアップ
   - クライアント: SwiftUI、HTTPリクエスト用URLSession
 - **アーキテクチャ**: 単方向HTTP通信（クライアント → サーバー）
 - **プラットフォーム**: ローカル専用・プライバシー重視のiOS
+- **API仕様**: OpenAPI 3.0.3 仕様（swift-openapi-generator使用）
+- **HTTP抽象化**: HTTPAdapters Swift Package（HummingBird統合）
 
 ## 計画されたディレクトリ構造
 
@@ -181,7 +183,7 @@ swift test --package-path APISharedModels/
 
 #### worktree-manager.sh
 ```bash
-# 新規worktreeの作成
+# 新規worktreeの作成（子ディレクトリ方式）
 ./worktree-manager.sh create <branch名> [<path>]
 
 # 既存worktreeの一覧表示
@@ -200,11 +202,25 @@ swift test --package-path APISharedModels/
 ./claude-parallel.sh new <issue番号> [<説明>]
 ```
 
+#### 使用例
+```bash
+# 新しいIssueの作業開始
+./claude-parallel.sh new 75 "improve-performance"
+
+# 作業ディレクトリに移動（Claude Code制限内で正常動作）
+cd worktrees/issue-75-improve-performance
+
+# 作業完了後の削除
+./worktree-manager.sh delete issue-75-improve-performance
+```
+
 ### Claude Code専用の運用ルール
 
+- **子ディレクトリ方式**: Claude Codeのディレクトリ制限に対応するため、子ディレクトリ方式を採用
 - **自動Worktree作成**: Claude CodeはIssue作業開始時に自動的にworktreeを作成
 - **命名規則**: `issue-{番号}-{説明}`形式のブランチ名を使用
-- **作業ディレクトリ**: `../worktrees/issue-{番号}-{説明}/`ディレクトリで作業実行
+- **作業ディレクトリ**: `worktrees/issue-{番号}-{説明}/`ディレクトリで作業実行
+- **制限回避**: 親ディレクトリや兄弟ディレクトリへの移動制限を回避
 - **自動削除**: 作業完了時に不要なworktreeを自動的に削除
 
 ### メリット
@@ -213,6 +229,17 @@ swift test --package-path APISharedModels/
 - **環境分離**: 各作業が独立し、相互影響を防止
 - **高速切り替え**: ブランチ切り替えが不要で、ディレクトリ移動のみ
 - **安全性**: mainブランチを直接変更するリスクを排除
+- **Claude Code対応**: 子ディレクトリ方式により、Claude Codeのディレクトリ制限内で完全に動作
+
+### 重要な変更点（2025年7月）
+
+以前は`../worktree-issue-XX-description/`形式で親ディレクトリにworktreeを作成していましたが、Claude Codeのセキュリティ制限により、以下の問題が発生していました：
+
+- **制限**: Claude Codeは親ディレクトリや兄弟ディレクトリへの移動が制限される
+- **問題**: worktreeが作成されても、実際にディレクトリ移動ができない
+- **解決**: 子ディレクトリ方式（`worktrees/issue-XX-description/`）への変更
+
+この変更により、Claude Codeでの作業効率が大幅に向上し、worktreeの利点を最大限に活用できるようになりました。
 
 ## テスト駆動開発(TDD)
 

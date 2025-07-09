@@ -46,7 +46,7 @@ create_work_environment() {
     
     # ブランチ名を生成
     local branch_name="issue-${issue_number}-${description}"
-    local worktree_path="../worktree-${branch_name}"
+    local worktree_path="worktrees/${branch_name}"
     
     echo "=== Claude Code並行作業環境のセットアップ ==="
     echo "Issue番号: #${issue_number}"
@@ -81,6 +81,10 @@ create_work_environment() {
     fi
     
     echo "1. Worktreeを作成しています..."
+    
+    # worktreesディレクトリを作成（存在しない場合）
+    mkdir -p "$(dirname "$worktree_path")"
+    
     if git rev-parse --verify "$branch_name" >/dev/null 2>&1; then
         # 既存のブランチの場合
         git worktree add "$worktree_path" "$branch_name"
@@ -118,6 +122,10 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
     echo "  1. 作業ディレクトリに移動: cd $worktree_path"
     echo "  2. 開発を開始"
     echo "  3. 作業完了後、Worktreeを削除: ./worktree-manager.sh delete $branch_name"
+    echo ""
+    echo "Claude Code使用時の重要な注意:"
+    echo "  - 子ディレクトリ方式を採用しているため、Claude Codeの制限内で正常に動作します"
+    echo "  - 作業ディレクトリは $worktree_path です"
     echo ""
     echo "現在のディレクトリ: $(pwd)"
     echo "現在のブランチ: $(git branch --show-current)"

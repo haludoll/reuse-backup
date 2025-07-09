@@ -19,7 +19,7 @@ show_usage() {
     echo ""
     echo "例:"
     echo "  $0 create issue-41-test"
-    echo "  $0 create issue-41-test ../issue-41-work"
+    echo "  $0 create issue-41-test worktrees/issue-41-work"
     echo "  $0 list"
     echo "  $0 status"
     echo "  $0 delete issue-41-test"
@@ -36,12 +36,15 @@ create_worktree() {
         exit 1
     fi
     
-    # パスが指定されていない場合は、../worktree-{branch_name}を使用
+    # パスが指定されていない場合は、worktrees/{branch_name}を使用（子ディレクトリ方式）
     if [ -z "$path" ]; then
-        path="../worktree-${branch_name}"
+        path="worktrees/${branch_name}"
     fi
     
     echo "Worktreeを作成しています: $branch_name -> $path"
+    
+    # worktreesディレクトリを作成（存在しない場合）
+    mkdir -p "$(dirname "$path")"
     
     # ブランチが存在するかチェック
     if git rev-parse --verify "$branch_name" >/dev/null 2>&1; then

@@ -89,6 +89,9 @@ class MediaUploadViewModel: ObservableObject {
                 Task { @MainActor in
                     if let currentIndex = self.uploadItems.firstIndex(where: { $0.id == item.id }) {
                         self.uploadItems[currentIndex].status = .uploading(progress: progress)
+                        
+                        // 進捗更新時にも統計情報を更新（リアルタイム反映のため）
+                        self.updateStatistics()
                     }
                 }
             }
@@ -96,11 +99,17 @@ class MediaUploadViewModel: ObservableObject {
             // 成功時の処理
             uploadItems[index].status = .completed
             uploadItems[index].serverMediaId = response.mediaId
+            
+            // 統計情報を即座に更新（UIの即座反映のため）
+            updateStatistics()
 
         } catch {
             // エラー時の処理
             uploadItems[index].status = .failed(error: error.localizedDescription)
             errorMessage = "アップロードエラー: \(error.localizedDescription)"
+            
+            // 統計情報を即座に更新（UIの即座反映のため）
+            updateStatistics()
         }
     }
 

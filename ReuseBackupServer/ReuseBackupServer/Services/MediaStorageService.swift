@@ -365,6 +365,12 @@ final class MediaStorageService {
     private func streamingFileCopy(from sourceURL: URL, to targetURL: URL) async throws {
         let chunkSize = 8 * 1024 * 1024 // 8MB chunks
 
+        // ファイルサイズを取得して進捗計算用
+        let fileAttributes = try fileManager.attributesOfItem(atPath: sourceURL.path)
+        let totalFileSize = fileAttributes[.size] as? Int64 ?? 0
+
+        logger.info("Starting streaming copy: \(totalFileSize) bytes, chunk size: \(chunkSize)")
+
         try await withCheckedThrowingContinuation { continuation in
             DispatchQueue.global(qos: .utility).async {
                 do {
@@ -384,7 +390,8 @@ final class MediaStorageService {
                     }
 
                     var buffer = [UInt8](repeating: 0, count: chunkSize)
-                    var totalBytesCopied = 0
+                    var totalBytesCopied: Int64 = 0
+                    var chunkCount = 0
 
                     while input.hasBytesAvailable {
                         let bytesRead = input.read(&buffer, maxLength: chunkSize)
@@ -402,13 +409,27 @@ final class MediaStorageService {
                             throw MediaStorageError.streamWriteError
                         }
 
-                        totalBytesCopied += bytesWritten
+                        totalBytesCopied += Int64(bytesWritten)
+                        chunkCount += 1
+
+                        // 5チャンクごとに進捗ログ（リアルタイム確認のため）
+                        let progress = totalFileSize > 0 ? Double(totalBytesCopied) / Double(totalFileSize) * 100 : 0
+                        if chunkCount % 5 == 0 {
+                            self.logger
+                                .info(
+                                    "📊 Streaming copy progress: \(String(format: "%.1f", progress))% (\(totalBytesCopied)/\(totalFileSize) bytes) - chunk #\(chunkCount)"
+                                )
+
+                            // ログをすぐにフラッシュ
+                            fflush(stdout)
+                        }
                     }
 
-                    self.logger.info("Streaming copy completed: \(totalBytesCopied) bytes")
+                    self.logger.info("✅ Streaming copy completed: \(totalBytesCopied) bytes (100%)")
                     continuation.resume()
 
                 } catch {
+                    self.logger.error("❌ Streaming copy failed: \(error.localizedDescription)")
                     continuation.resume(throwing: error)
                 }
             }

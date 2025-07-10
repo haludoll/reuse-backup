@@ -44,7 +44,18 @@ struct MultipartParser {
         let dataCount = data.count
 
         logger.debug("Starting boundary split for \(dataCount) bytes")
+        logger.debug("Boundary pattern: \(String(data: boundaryData, encoding: .utf8) ?? "N/A")")
+        logger.debug("Final boundary pattern: \(String(data: finalBoundaryData, encoding: .utf8) ?? "N/A")")
         var lastProgressLog = 0
+
+        // 最初の境界を探す（通常、データの先頭近くにある）
+        guard let firstBoundaryRange = data.range(of: boundaryData, in: 0 ..< min(1000, dataCount)) else {
+            logger.error("No initial boundary found at start of data")
+            return []
+        }
+
+        logger.debug("Found initial boundary at: \(firstBoundaryRange)")
+        currentIndex = firstBoundaryRange.upperBound
 
         while currentIndex < dataCount {
             // 進捗ログ（10%ごとに出力）
@@ -54,34 +65,26 @@ struct MultipartParser {
                 lastProgressLog = progress
             }
 
-            // boundary の開始位置を検索
-            guard let boundaryRange = data.range(of: boundaryData, in: currentIndex ..< dataCount) else {
-                break
+            // 次のboundary の開始位置を検索
+            let nextBoundaryRange = data.range(of: boundaryData, in: currentIndex ..< dataCount)
+            let nextFinalBoundaryRange = data.range(of: finalBoundaryData, in: currentIndex ..< dataCount)
+
+            // 最も近い境界を選択
+            var selectedRange: Range<Int>?
+            if let nextRange = nextBoundaryRange, let finalRange = nextFinalBoundaryRange {
+                selectedRange = nextRange.lowerBound < finalRange.lowerBound ? nextRange : finalRange
+            } else if let nextRange = nextBoundaryRange {
+                selectedRange = nextRange
+            } else if let finalRange = nextFinalBoundaryRange {
+                selectedRange = finalRange
             }
 
-            // 次のboundaryまたは終了boundaryを検索
-            let searchStart = boundaryRange.upperBound
-            var nextBoundaryRange: Range<Int>?
-
-            // 通常のboundaryを検索
-            if let range = data.range(of: boundaryData, in: searchStart ..< dataCount) {
-                nextBoundaryRange = range
-            }
-
-            // 終了boundaryも検索
-            if let finalRange = data.range(of: finalBoundaryData, in: searchStart ..< dataCount) {
-                if nextBoundaryRange == nil || finalRange.lowerBound < nextBoundaryRange!.lowerBound {
-                    nextBoundaryRange = finalRange
-                }
-            }
-
-            if let nextRange = nextBoundaryRange {
+            if let selectedRange {
                 // CRLFを考慮してpartデータを抽出
-                let partStart = boundaryRange.upperBound
-                let partEnd = nextRange.lowerBound
+                let partEnd = selectedRange.lowerBound
 
-                if partStart < partEnd {
-                    var partData = data.subdata(in: partStart ..< partEnd)
+                if currentIndex < partEnd {
+                    var partData = data.subdata(in: currentIndex ..< partEnd)
 
                     // 先頭のCRLFを除去
                     if partData.starts(with: "\r\n".data(using: .utf8)!) {
@@ -96,11 +99,45 @@ struct MultipartParser {
                     if !partData.isEmpty {
                         parts.append(Data(partData))
                         logger.debug("Found part #\(parts.count) with size \(partData.count)")
+
+                        // パートの先頭をデバッグ出力（最初の200文字まで）
+                        if let preview = String(data: Data(partData.prefix(200)), encoding: .utf8) {
+                            logger
+                                .debug(
+                                    "Part #\(parts.count) preview: \(preview.replacingOccurrences(of: "\r\n", with: "\\r\\n"))"
+                                )
+                        }
                     }
                 }
 
-                currentIndex = nextRange.upperBound
+                // 終了boundary（--boundary--）の場合は処理を終了
+                let boundaryData = data.subdata(in: selectedRange)
+                if boundaryData.starts(with: finalBoundaryData) {
+                    logger.info("Found final boundary, stopping parse")
+                    break
+                }
+
+                currentIndex = selectedRange.upperBound
             } else {
+                // 最後のパートを処理
+                if currentIndex < dataCount {
+                    var partData = data.subdata(in: currentIndex ..< dataCount)
+
+                    // 先頭のCRLFを除去
+                    if partData.starts(with: "\r\n".data(using: .utf8)!) {
+                        partData = partData.dropFirst(2)
+                    }
+
+                    // 末尾のCRLFを除去
+                    if partData.hasSuffix("\r\n".data(using: .utf8)!) {
+                        partData = partData.dropLast(2)
+                    }
+
+                    if !partData.isEmpty {
+                        parts.append(Data(partData))
+                        logger.debug("Found final part #\(parts.count) with size \(partData.count)")
+                    }
+                }
                 break
             }
         }
@@ -127,7 +164,7 @@ struct MultipartParser {
             logger.error("Failed to decode header as UTF-8")
             throw MultipartParseError.invalidHeader
         }
-        
+
         logger.debug("Parsing part with header: \(headerString.replacingOccurrences(of: "\r\n", with: "\\r\\n"))")
 
         let headers = parseHeaders(headerString)

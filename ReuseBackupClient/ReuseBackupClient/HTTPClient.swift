@@ -151,52 +151,50 @@ class HTTPClient: NSObject {
     private func createMultipartData(mediaData: MediaUploadData, boundary: String) -> Data {
         var data = Data()
         let lineBreak = "\r\n"
+        
+        print("🔧 Creating multipart data with boundary: \(boundary)")
+        print("🔧 Fields to include: file, filename, fileSize, mimeType, mediaType, timestamp")
 
         // ファイルデータ
-        data.append("--\(boundary)\(lineBreak)".data(using: .utf8)!)
-        data
-            .append("Content-Disposition: form-data; name=\"file\"; filename=\"\(mediaData.filename)\"\(lineBreak)"
-                .data(using: .utf8)!
-            )
-        data.append("Content-Type: \(mediaData.mimeType)\(lineBreak)\(lineBreak)".data(using: .utf8)!)
+        let filePart = "--\(boundary)\(lineBreak)Content-Disposition: form-data; name=\"file\"; filename=\"\(mediaData.filename)\"\(lineBreak)Content-Type: \(mediaData.mimeType)\(lineBreak)\(lineBreak)"
+        data.append(filePart.data(using: .utf8)!)
         data.append(mediaData.data)
         data.append(lineBreak.data(using: .utf8)!)
+        print("🔧 Added file field with \(mediaData.data.count) bytes")
 
         // ファイル名
-        data.append("--\(boundary)\(lineBreak)".data(using: .utf8)!)
-        data.append("Content-Disposition: form-data; name=\"filename\"\(lineBreak)\(lineBreak)".data(using: .utf8)!)
-        data.append(mediaData.filename.data(using: .utf8)!)
-        data.append(lineBreak.data(using: .utf8)!)
+        let filenamePart = "--\(boundary)\(lineBreak)Content-Disposition: form-data; name=\"filename\"\(lineBreak)\(lineBreak)\(mediaData.filename)\(lineBreak)"
+        data.append(filenamePart.data(using: .utf8)!)
+        print("🔧 Added filename field: \(mediaData.filename)")
 
         // ファイルサイズ
-        data.append("--\(boundary)\(lineBreak)".data(using: .utf8)!)
-        data.append("Content-Disposition: form-data; name=\"fileSize\"\(lineBreak)\(lineBreak)".data(using: .utf8)!)
-        data.append("\(mediaData.fileSize)".data(using: .utf8)!)
-        data.append(lineBreak.data(using: .utf8)!)
+        let filesizePart = "--\(boundary)\(lineBreak)Content-Disposition: form-data; name=\"fileSize\"\(lineBreak)\(lineBreak)\(mediaData.fileSize)\(lineBreak)"
+        data.append(filesizePart.data(using: .utf8)!)
+        print("🔧 Added fileSize field: \(mediaData.fileSize)")
 
         // MIMEタイプ
-        data.append("--\(boundary)\(lineBreak)".data(using: .utf8)!)
-        data.append("Content-Disposition: form-data; name=\"mimeType\"\(lineBreak)\(lineBreak)".data(using: .utf8)!)
-        data.append(mediaData.mimeType.data(using: .utf8)!)
-        data.append(lineBreak.data(using: .utf8)!)
+        let mimetypePart = "--\(boundary)\(lineBreak)Content-Disposition: form-data; name=\"mimeType\"\(lineBreak)\(lineBreak)\(mediaData.mimeType)\(lineBreak)"
+        data.append(mimetypePart.data(using: .utf8)!)
+        print("🔧 Added mimeType field: \(mediaData.mimeType)")
 
         // メディアタイプ
-        data.append("--\(boundary)\(lineBreak)".data(using: .utf8)!)
-        data.append("Content-Disposition: form-data; name=\"mediaType\"\(lineBreak)\(lineBreak)".data(using: .utf8)!)
-        data.append(mediaData.mediaType.rawValue.data(using: .utf8)!)
-        data.append(lineBreak.data(using: .utf8)!)
+        let mediatypePart = "--\(boundary)\(lineBreak)Content-Disposition: form-data; name=\"mediaType\"\(lineBreak)\(lineBreak)\(mediaData.mediaType.rawValue)\(lineBreak)"
+        data.append(mediatypePart.data(using: .utf8)!)
+        print("🔧 Added mediaType field: \(mediaData.mediaType.rawValue)")
 
         // タイムスタンプ
         let iso8601Formatter = ISO8601DateFormatter()
         let timestampString = iso8601Formatter.string(from: mediaData.timestamp)
-        data.append("--\(boundary)\(lineBreak)".data(using: .utf8)!)
-        data.append("Content-Disposition: form-data; name=\"timestamp\"\(lineBreak)\(lineBreak)".data(using: .utf8)!)
-        data.append(timestampString.data(using: .utf8)!)
-        data.append(lineBreak.data(using: .utf8)!)
+        let timestampPart = "--\(boundary)\(lineBreak)Content-Disposition: form-data; name=\"timestamp\"\(lineBreak)\(lineBreak)\(timestampString)\(lineBreak)"
+        data.append(timestampPart.data(using: .utf8)!)
+        print("🔧 Added timestamp field: \(timestampString)")
 
         // 終了境界
-        data.append("--\(boundary)--\(lineBreak)".data(using: .utf8)!)
-
+        let endBoundary = "--\(boundary)--\(lineBreak)"
+        data.append(endBoundary.data(using: .utf8)!)
+        print("🔧 Added end boundary")
+        
+        print("🔧 Total multipart data size: \(data.count) bytes")
         return data
     }
 

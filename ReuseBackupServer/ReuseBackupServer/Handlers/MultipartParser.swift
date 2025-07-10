@@ -115,6 +115,7 @@ struct MultipartParser {
         let headerBodySeparator = "\r\n\r\n".data(using: .utf8)!
         guard let separatorRange = data.range(of: headerBodySeparator) else {
             // ヘッダーのみでボディがない場合はスキップ
+            logger.debug("No header-body separator found in part, skipping")
             return nil
         }
 
@@ -123,8 +124,11 @@ struct MultipartParser {
 
         // ヘッダーを解析
         guard let headerString = String(data: headerData, encoding: .utf8) else {
+            logger.error("Failed to decode header as UTF-8")
             throw MultipartParseError.invalidHeader
         }
+        
+        logger.debug("Parsing part with header: \(headerString.replacingOccurrences(of: "\r\n", with: "\\r\\n"))")
 
         let headers = parseHeaders(headerString)
 

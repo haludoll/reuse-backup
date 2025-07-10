@@ -66,11 +66,66 @@ final class MultipartStreamParser {
 
     /// 効率的なマルチパート解析（単純化版）
     private func processMultipartDataEfficiently(data: Data, tempDirectory: URL) async throws -> [MultipartChunk] {
-        logger.info("Using simplified multipart processing")
+        logger.info("Processing multipart data with boundary search")
 
-        // 大容量ファイルの場合は、シンプルな方法を使用
-        // マルチパートデータを全て一つのファイルとして処理
-        return try await processAsSignleFile(data: data, tempDirectory: tempDirectory)
+        var chunks: [MultipartChunk] = []
+        var currentPosition = 0
+        var chunkId = 0
+
+        // 最初の境界を探す
+        guard let firstBoundaryRange = findNextBoundary(in: data, startingAt: currentPosition) else {
+            logger.error("No initial boundary found in multipart data")
+            throw MultipartStreamError.invalidBoundary
+        }
+
+        currentPosition = firstBoundaryRange.upperBound
+
+        // 各パートを処理
+        while currentPosition < data.count {
+            // 次の境界を探す
+            let nextBoundaryRange = findNextBoundary(in: data, startingAt: currentPosition)
+
+            let partEndPosition: Int = if let nextRange = nextBoundaryRange {
+                // 境界の前の改行を除く
+                nextRange.lowerBound - 2 // \r\nを除く
+            } else {
+                // 最後のパートの場合
+                data.count
+            }
+
+            // パートのデータを抽出
+            if partEndPosition > currentPosition {
+                let partData = data.subdata(in: currentPosition ..< partEndPosition)
+
+                // チャンクファイルとして保存
+                let chunkFile = tempDirectory.appendingPathComponent("chunk_\(chunkId)")
+                try partData.write(to: chunkFile)
+
+                chunks.append(MultipartChunk(
+                    id: chunkId,
+                    fileURL: chunkFile,
+                    size: partData.count
+                ))
+
+                logger.debug("Created chunk \(chunkId) with size \(partData.count)")
+                chunkId += 1
+            }
+
+            // 終了境界の場合は終了
+            if let nextRange = nextBoundaryRange {
+                let boundaryData = data.subdata(in: nextRange)
+                if boundaryData.starts(with: finalBoundaryData) {
+                    logger.info("Found final boundary, ending parse")
+                    break
+                }
+                currentPosition = nextRange.upperBound
+            } else {
+                break
+            }
+        }
+
+        logger.info("Created \(chunks.count) chunks from multipart data")
+        return chunks
     }
 
     /// データを単一ファイルとして処理（境界検索を回避）

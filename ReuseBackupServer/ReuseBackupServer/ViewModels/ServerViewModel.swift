@@ -25,10 +25,10 @@ final class ServerViewModel: ObservableObject {
 
     /// ログ出力用のLogger
     private let logger = Logger(subsystem: "com.haludoll.ReuseBackupServer", category: "ServerViewModel")
-    
+
     /// 自動起動設定のキー
     private let autoStartKey = "ServerAutoStart"
-    
+
     /// 自動起動の設定
     var autoStartEnabled: Bool {
         get {
@@ -70,13 +70,13 @@ final class ServerViewModel: ObservableObject {
     /// - Parameter httpServerService: HTTPサーバーサービスの実装（デフォルト: HTTPServerService）
     init(httpServerService: HTTPServerServiceProtocol = HTTPServerService()) {
         self.httpServerService = httpServerService
-        
+
         // 初回起動時は自動起動を有効にする
         if !UserDefaults.standard.bool(forKey: "HasLaunchedBefore") {
             UserDefaults.standard.set(true, forKey: "HasLaunchedBefore")
             autoStartEnabled = true
         }
-        
+
         logger.info("ServerViewModel initialized (auto-start: \(self.autoStartEnabled))")
     }
 

@@ -1,10 +1,12 @@
 import Foundation
+import OSLog
 
 /// マルチパートフォームデータ解析クラス
 struct MultipartParser {
     private let boundary: String
     private let boundaryData: Data
     private let finalBoundaryData: Data
+    private let logger = Logger(subsystem: "com.haludoll.ReuseBackupServer", category: "MultipartParser")
 
     init(boundary: String) {
         self.boundary = boundary
@@ -14,17 +16,22 @@ struct MultipartParser {
 
     /// マルチパートデータを解析して辞書形式で返す
     func parse(data: Data) throws -> [String: MultipartValue] {
+        logger.info("Starting multipart parse for \(data.count) bytes")
         var result: [String: MultipartValue] = [:]
 
         // データをboundaryで分割
         let parts = splitByBoundary(data: data)
+        logger.info("Found \(parts.count) parts in multipart data")
 
-        for partData in parts {
+        for (index, partData) in parts.enumerated() {
+            logger.debug("Processing part \(index + 1)/\(parts.count) with size \(partData.count)")
             if let part = try parsePartData(partData) {
                 result[part.name] = part.value
+                logger.debug("Added field '\(part.name)' to result")
             }
         }
 
+        logger.info("Completed multipart parse with \(result.count) fields")
         return result
     }
 
@@ -34,10 +41,21 @@ struct MultipartParser {
     private func splitByBoundary(data: Data) -> [Data] {
         var parts: [Data] = []
         var currentIndex = 0
+        let dataCount = data.count
 
-        while currentIndex < data.count {
+        logger.debug("Starting boundary split for \(dataCount) bytes")
+        var lastProgressLog = 0
+
+        while currentIndex < dataCount {
+            // 進捗ログ（10%ごとに出力）
+            let progress = Int(Double(currentIndex) / Double(dataCount) * 100)
+            if progress >= lastProgressLog + 10 {
+                logger.info("Boundary search progress: \(progress)%")
+                lastProgressLog = progress
+            }
+
             // boundary の開始位置を検索
-            guard let boundaryRange = data.range(of: boundaryData, in: currentIndex ..< data.count) else {
+            guard let boundaryRange = data.range(of: boundaryData, in: currentIndex ..< dataCount) else {
                 break
             }
 
@@ -46,12 +64,12 @@ struct MultipartParser {
             var nextBoundaryRange: Range<Int>?
 
             // 通常のboundaryを検索
-            if let range = data.range(of: boundaryData, in: searchStart ..< data.count) {
+            if let range = data.range(of: boundaryData, in: searchStart ..< dataCount) {
                 nextBoundaryRange = range
             }
 
             // 終了boundaryも検索
-            if let finalRange = data.range(of: finalBoundaryData, in: searchStart ..< data.count) {
+            if let finalRange = data.range(of: finalBoundaryData, in: searchStart ..< dataCount) {
                 if nextBoundaryRange == nil || finalRange.lowerBound < nextBoundaryRange!.lowerBound {
                     nextBoundaryRange = finalRange
                 }
@@ -77,6 +95,7 @@ struct MultipartParser {
 
                     if !partData.isEmpty {
                         parts.append(Data(partData))
+                        logger.debug("Found part #\(parts.count) with size \(partData.count)")
                     }
                 }
 
@@ -86,6 +105,7 @@ struct MultipartParser {
             }
         }
 
+        logger.info("Completed boundary split with \(parts.count) parts")
         return parts
     }
 
@@ -176,22 +196,16 @@ struct MultipartParser {
 // MARK: - Extensions
 
 extension Data {
-    /// 指定されたデータパターンを検索して範囲を返す
+    /// 指定されたデータパターンを検索して範囲を返す（最適化版）
     func range(of data: Data, in range: Range<Int>) -> Range<Int>? {
-        let searchData = subdata(in: range)
-
         // 検索対象のデータが検索範囲より大きい場合は見つからない
-        guard searchData.count >= data.count else {
+        guard range.count >= data.count else {
             return nil
         }
 
-        for i in 0 ..< searchData.count - data.count + 1 {
-            let candidateRange = i ..< i + data.count
-            let candidate = searchData.subdata(in: candidateRange)
-
-            if candidate == data {
-                return (range.lowerBound + i) ..< (range.lowerBound + i + data.count)
-            }
+        // Foundation標準のrangeメソッドを使用（内部でより効率的な検索アルゴリズムを使用）
+        if let foundRange = self.range(of: data, options: [], in: range) {
+            return foundRange.lowerBound ..< foundRange.upperBound
         }
 
         return nil

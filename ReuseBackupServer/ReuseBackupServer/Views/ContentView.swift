@@ -45,6 +45,15 @@ struct ContentView: View {
             ServerControlView(viewModel: viewModel)
         }
         .padding()
+        .onAppear {
+            // 自動起動が有効な場合のみサーバーを起動
+            if viewModel.autoStartEnabled {
+                Task {
+                    print("🚀 Auto-starting server on app launch...")
+                    await viewModel.startServer()
+                }
+            }
+        }
     }
 }
 

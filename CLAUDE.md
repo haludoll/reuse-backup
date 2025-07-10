@@ -22,36 +22,43 @@ ReuseBackupは、古いiPhoneを写真・動画のローカルバックアップ
 - **API仕様**: OpenAPI 3.0.3 仕様（swift-openapi-generator使用）
 - **HTTP抽象化**: HTTPAdapters Swift Package（HummingBird統合）
 
-## 計画されたディレクトリ構造
+## 実際のディレクトリ構造
 
 ```
-ReuseBackupServer/          # 古いiPhone用サーバーアプリ
-├── Sources/
-│   ├── Models/            # コアデータモデル
-│   ├── Network/           # HTTPサーバー、Bonjour
-│   ├── Storage/           # ファイル管理
-│   └── UI/               # UIKitベースのUI
-└── Tests/
+ReuseBackupServer/          # 古いiPhone用サーバーアプリ（Xcodeプロジェクト）
+├── ReuseBackupServer/
+│   ├── Services/          # HTTPサーバー、Bonjour、ストレージサービス
+│   ├── Handlers/          # APIエンドポイントハンドラー
+│   ├── ViewModels/        # SwiftUI ViewModels
+│   ├── Views/            # SwiftUIビュー
+│   └── ReuseBackupServerApp.swift
+└── ReuseBackupServerTests/
 
-ReuseBackupClient/          # 新しいiPhone用クライアントアプリ
-├── Sources/
-│   ├── Models/            # コアデータモデル
-│   ├── Network/           # HTTPクライアント、発見機能
-│   ├── UI/               # SwiftUIビュー
-│   └── PhotoLibrary/     # Photosフレームワーク統合
-└── Tests/
+ReuseBackupClient/          # 新しいiPhone用クライアントアプリ（Xcodeプロジェクト）
+├── ReuseBackupClient/
+│   ├── Services/          # HTTPクライアント、サーバー発見
+│   ├── ViewModels/        # SwiftUI ViewModels
+│   ├── Views/            # SwiftUIビュー
+│   └── ReuseBackupClientApp.swift
+└── ReuseBackupClientTests/
 
 APISharedModels/          # 共有APIモデルSwiftパッケージ
 ├── Sources/APISharedModels/
-│   ├── FileMetadata.swift
-│   ├── TransferStatus.swift
-│   └── NetworkModels.swift
+│   ├── openapi.yaml      # OpenAPI 3.0.3 仕様
+│   └── Generated/        # 自動生成されたSwiftモデル
+└── Tests/
+
+HTTPAdapters/            # HTTPサーバー抽象化Swiftパッケージ
+├── Sources/HTTPAdapters/
+│   ├── HTTPServerAdapter.swift
+│   ├── HummingBirdAdapter.swift
+│   └── TLSCertificateManager.swift
 └── Tests/
 ```
 
-## 想定される開発コマンド
+## 開発コマンド
 
-実装後の典型的なコマンド：
+実際に使用されているコマンド：
 
 ```bash
 # サーバーアプリのビルド
@@ -60,33 +67,48 @@ xcodebuild -project ReuseBackupServer/ReuseBackupServer.xcodeproj -scheme ReuseB
 # クライアントアプリのビルド
 xcodebuild -project ReuseBackupClient/ReuseBackupClient.xcodeproj -scheme ReuseBackupClient build
 
-# テスト実行
-xcodebuild test -project ReuseBackupServer/ReuseBackupServer.xcodeproj -scheme ReuseBackupServer
-xcodebuild test -project ReuseBackupClient/ReuseBackupClient.xcodeproj -scheme ReuseBackupClient
+# テスト実行（XCTestPlan使用）
+xcodebuild test -project ReuseBackupServer/ReuseBackupServer.xcodeproj -testPlan ReuseBackupServerTests
+xcodebuild test -project ReuseBackupClient/ReuseBackupClient.xcodeproj -testPlan ReuseBackupClientTests
 
 # 共有APIモデル用Swiftパッケージ
 swift build -c debug --package-path APISharedModels/
 swift test --package-path APISharedModels/
+
+# HTTPAdapters用Swiftパッケージ
+swift build -c debug --package-path HTTPAdapters/
+swift test --package-path HTTPAdapters/
+
+# OpenAPI仕様からコード自動生成
+swift run --package-path APISharedModels/ swift-openapi-generator generate
+
+# コードフォーマット
+swiftformat ReuseBackupServer/ReuseBackupServer ReuseBackupServer/ReuseBackupServerTests
 ```
 
 ## コアアーキテクチャ
 
 ### 通信フロー
 1. クライアントがBonjour経由でサーバーを発見（`_reuse-backup._tcp`）
-2. クライアントがHTTP POSTで`/api/upload`にファイルをアップロード
+2. クライアントがHTTP POSTで`/api/media/upload`にファイルをアップロード
 3. サーバーがファイルを保存してステータスを返答
 4. クライアントが転送進捗を追跡してエラーを処理
+5. クライアントが`/api/status`でサーバーの状態を確認
+6. メッセージ送受信は`/api/message`エンドポイントで実行
 
-### 主要データモデル
-- **FileMetadata**: ファイル情報（名前、サイズ、ハッシュ、作成日）
-- **TransferStatus**: アップロード進捗と状態管理
-- **ServerInfo**: デバイス機能とストレージ状況
+### 主要データモデル（OpenAPI仕様ベース）
+- **MediaUploadRequest**: メディアアップロード要求（ファイル、メタデータ）
+- **MediaUploadResponse**: アップロード結果（成功/失敗、保存パス）
+- **StatusResponse**: サーバー状態（ストレージ使用量、デバイス情報）
+- **MessageRequest/MessageResponse**: メッセージ送受信
+- **ErrorResponse**: エラー情報（コード、メッセージ、詳細）
 
-### APIエンドポイント（計画中）
-- `GET /api/status` - サーバーの健全性とストレージ情報
-- `POST /api/upload` - メタデータ付きファイルアップロード
-- `GET /api/files` - 保存されたファイル一覧
-- `DELETE /api/files/{id}` - 特定ファイルの削除
+### APIエンドポイント（OpenAPI仕様定義済み）
+- `GET /api/status` - サーバーの健全性とストレージ情報（**実装済み**）
+- `POST /api/message` - メッセージ送受信（**実装済み**）
+- `POST /api/media/upload` - メディアファイルアップロード（**サーバーサイド実装中**）
+- `GET /api/files` - 保存されたファイル一覧（**未実装**）
+- `DELETE /api/files/{id}` - 特定ファイルの削除（**未実装**）
 
 ## 設計原則
 
@@ -102,13 +124,35 @@ swift test --package-path APISharedModels/
 2. **拡張フェーズ**: 重複検出などの高度な機能
 3. **仕上げフェーズ**: UI改良とApp Store準備
 
-## 実装への次のステップ
+## 現在の実装状況
 
-1. 両アプリのXcodeプロジェクトセットアップ
-2. SharedModels Swiftパッケージの作成
-3. コアネットワーキング層の実装
-4. 両アプリの基本UI構築
-5. 包括的なエラーハンドリングとテストの追加
+### 実装済み機能
+- ✅ 両アプリのXcodeプロジェクトセットアップ完了
+- ✅ APISharedModels SwiftパッケージとOpenAPI仕様
+- ✅ HTTPAdapters Swiftパッケージ
+- ✅ サーバーのBonjour発見機能
+- ✅ 基本的なHTTPサーバー機能
+- ✅ メッセージ送受信機能
+- ✅ サーバーステータス取得機能
+- ✅ クライアントのサーバー発見機能
+- ✅ 写真・動画選択UI
+- ✅ アップロード管理UI
+- ✅ 両アプリの基本UI構築
+
+### 実装中の機能
+- 🔄 写真・動画アップロードのサーバーサイド処理（Issue #47）
+  - MediaUploadHandler実装
+  - マルチパートフォーム解析
+  - ストリーミングアップロード対応
+
+### 未実装の機能
+- ⏳ ファイル一覧取得機能
+- ⏳ ファイル削除機能
+- ⏳ 重複検出機能
+- ⏳ 進捗追跡の詳細実装
+- ⏳ バッテリー配慮の最適化
+- ⏳ 包括的なエラーハンドリング
+- ⏳ App Store準備
 
 ## ビジネスコンテキスト
 

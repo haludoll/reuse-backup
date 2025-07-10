@@ -1,5 +1,5 @@
-import Foundation
 import APISharedModels
+import Foundation
 
 @MainActor
 class MessageSendViewModel: ObservableObject {
@@ -13,30 +13,30 @@ class MessageSendViewModel: ObservableObject {
     @Published var showingErrorAlert = false
     @Published var alertTitle = ""
     @Published var alertMessage = ""
-    
+
     private let httpClient = HTTPClient()
     private let serverDiscoveryManager = ServerDiscoveryManager()
-    
+
     enum ConnectionStatus {
         case disconnected
         case connecting
         case connected
         case error
     }
-    
+
     func discoverServer() async {
         connectionStatus = .connecting
         errorMessage = nil
-        
+
         // Bonjourサービス検索を開始
         serverDiscoveryManager.startDiscovery()
-        
+
         // 検索完了まで待機
         try? await Task.sleep(nanoseconds: 16_000_000_000) // 16秒待機
-        
+
         // 発見されたサーバーを確認
         let discoveredServers = serverDiscoveryManager.discoveredServers
-        
+
         if discoveredServers.isEmpty {
             isConnected = false
             serverURL = nil
@@ -44,11 +44,11 @@ class MessageSendViewModel: ObservableObject {
             errorMessage = "利用可能なサーバーが見つかりませんでした。サーバーが起動していることを確認してください。"
             return
         }
-        
+
         // 最初に見つかった利用可能なサーバーを使用
         for server in discoveredServers {
             guard let url = URL(string: server.endpoint) else { continue }
-            
+
             do {
                 // サーバーの状態をチェック
                 let statusResponse = try await httpClient.checkServerStatus(baseURL: url)
@@ -62,45 +62,45 @@ class MessageSendViewModel: ObservableObject {
                 continue
             }
         }
-        
+
         // すべてのサーバーで接続に失敗
         isConnected = false
         serverURL = nil
         connectionStatus = .error
         errorMessage = "発見されたサーバーに接続できませんでした。"
     }
-    
+
     func sendMessage(_ message: String) async {
-        guard let serverURL = serverURL else {
+        guard let serverURL else {
             showError("接続エラー", "サーバーが設定されていません。先にサーバー検索を実行してください。")
             return
         }
-        
+
         // メッセージの検証
         guard !message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             showError("入力エラー", "メッセージが空です。")
             return
         }
-        
+
         guard message.count <= 1000 else {
             showError("入力エラー", "メッセージは1000文字以内で入力してください。")
             return
         }
-        
+
         isSending = true
         errorMessage = nil
-        
+
         do {
             let messageRequest = Components.Schemas.MessageRequest(
                 message: message.trimmingCharacters(in: .whitespacesAndNewlines),
                 timestamp: Date()
             )
-            
+
             let response = try await httpClient.sendMessage(
                 baseURL: serverURL,
                 messageRequest: messageRequest
             )
-            
+
             lastResponse = response
             showSuccess("送信完了", "メッセージが正常に送信されました。")
             print("メッセージ送信成功: \(response)")
@@ -110,80 +110,80 @@ class MessageSendViewModel: ObservableObject {
             showError("送信エラー", detailedError)
             print("メッセージ送信エラー: \(error)")
         }
-        
+
         isSending = false
     }
-    
+
     private func showSuccess(_ title: String, _ message: String) {
         alertTitle = title
         alertMessage = message
         showingSuccessAlert = true
     }
-    
+
     private func showError(_ title: String, _ message: String) {
         alertTitle = title
         alertMessage = message
         showingErrorAlert = true
     }
-    
+
     private func getDetailedErrorMessage(_ error: Error) -> String {
         if let httpError = error as? HTTPClientError {
             switch httpError {
             case .invalidResponse:
-                return "サーバーから無効な応答が返されました。"
-            case .httpError(let statusCode):
-                return getHTTPErrorMessage(statusCode)
+                "サーバーから無効な応答が返されました。"
+            case let .httpError(statusCode):
+                getHTTPErrorMessage(statusCode)
             case .encodingError:
-                return "リクエストの作成に失敗しました。"
+                "リクエストの作成に失敗しました。"
             case .decodingError:
-                return "サーバーの応答を解析できませんでした。"
-            case .serverError(let errorResponse):
-                return "サーバーエラー: \(errorResponse.error ?? "不明なエラー")"
+                "サーバーの応答を解析できませんでした。"
+            case let .serverError(errorResponse):
+                "サーバーエラー: \(errorResponse.error ?? "不明なエラー")"
             }
         } else if let urlError = error as? URLError {
             switch urlError.code {
             case .notConnectedToInternet:
-                return "インターネット接続を確認してください。"
+                "インターネット接続を確認してください。"
             case .timedOut:
-                return "接続がタイムアウトしました。サーバーが応答していない可能性があります。"
+                "接続がタイムアウトしました。サーバーが応答していない可能性があります。"
             case .cannotFindHost, .cannotConnectToHost:
-                return "サーバーに接続できません。サーバーが起動していることを確認してください。"
+                "サーバーに接続できません。サーバーが起動していることを確認してください。"
             case .networkConnectionLost:
-                return "ネットワーク接続が失われました。"
+                "ネットワーク接続が失われました。"
             default:
-                return "ネットワークエラー: \(urlError.localizedDescription)"
+                "ネットワークエラー: \(urlError.localizedDescription)"
             }
         } else {
-            return "予期しないエラーが発生しました: \(error.localizedDescription)"
+            "予期しないエラーが発生しました: \(error.localizedDescription)"
         }
     }
-    
+
     private func getHTTPErrorMessage(_ statusCode: Int) -> String {
         switch statusCode {
         case 400:
-            return "リクエストの形式が正しくありません。"
+            "リクエストの形式が正しくありません。"
         case 401:
-            return "認証が必要です。"
+            "認証が必要です。"
         case 403:
-            return "アクセスが拒否されました。"
+            "アクセスが拒否されました。"
         case 404:
-            return "サーバーが見つかりません。URLを確認してください。"
+            "サーバーが見つかりません。URLを確認してください。"
         case 405:
-            return "許可されていない操作です。"
+            "許可されていない操作です。"
         case 408:
-            return "リクエストがタイムアウトしました。"
+            "リクエストがタイムアウトしました。"
         case 429:
-            return "リクエストが多すぎます。しばらく待ってから再試行してください。"
+            "リクエストが多すぎます。しばらく待ってから再試行してください。"
         case 500:
-            return "サーバー内部エラーが発生しました。"
+            "サーバー内部エラーが発生しました。"
         case 502:
-            return "ゲートウェイエラーです。"
+            "ゲートウェイエラーです。"
         case 503:
-            return "サーバーが一時的に利用できません。"
+            "サーバーが一時的に利用できません。"
         case 504:
-            return "ゲートウェイタイムアウトです。"
+            "ゲートウェイタイムアウトです。"
         default:
-            return "HTTPエラー: \(statusCode)"
+            "HTTPエラー: \(statusCode)"
         }
     }
 }

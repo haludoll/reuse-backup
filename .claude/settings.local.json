@@ -43,7 +43,23 @@
       "Bash(git worktree:*)",
       "Bash(chmod:*)",
       "Bash(git worktree:*)",
-      "Bash(swift build:*)"
+      "Bash(swift build:*)",
+      "Bash(cp:*)",
+      "Bash(git stash:*)",
+      "mcp__github__search_repositories",
+      "mcp__github__list_pull_requests",
+      "mcp__github__get_pull_request_comments",
+      "mcp__github__list_workflow_runs",
+      "mcp__github__list_workflows",
+      "Bash(./claude-parallel.sh:*)",
+      "Bash(bash:*)",
+      "mcp__github__update_pull_request",
+      "Bash(git --git-dir=/Users/shota-nishizawa/dev/worktree-issue-71-specs-documentation/.git --work-tree=/Users/shota-nishizawa/dev/worktree-issue-71-specs-documentation status)",
+      "Bash(git merge:*)",
+      "Bash(gh pr close:*)",
+      "Bash(./worktree-manager.sh delete:*)",
+      "Bash(git branch:*)",
+      "mcp__github__update_pull_request"
     ],
     "deny": []
   }

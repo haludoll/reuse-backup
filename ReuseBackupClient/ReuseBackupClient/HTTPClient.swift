@@ -1,4 +1,5 @@
 import APISharedModels
+import AVFoundation
 import Foundation
 
 class HTTPClient: NSObject {
@@ -15,8 +16,8 @@ class HTTPClient: NSObject {
     override init() {
         // mDNS接続用に最適化したURLSession設定
         let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 15.0 // mDNS解決のため長めに設定
-        config.timeoutIntervalForResource = 30.0
+        config.timeoutIntervalForRequest = 60.0 // 大容量ファイル対応のため延長
+        config.timeoutIntervalForResource = 600.0 // 10分に延長（大容量ファイル対応）
 
         decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
@@ -96,6 +97,140 @@ class HTTPClient: NSObject {
                 throw HTTPClientError.serverError(errorResponse)
             } catch {
                 throw HTTPClientError.httpError(statusCode: httpResponse.statusCode)
+            }
+        }
+    }
+
+    /// メディアファイルをアップロード
+    func uploadMedia(
+        baseURL: URL,
+        mediaData: MediaUploadData,
+        progressHandler: @escaping (Double) -> Void = { _ in }
+    ) async throws -> Components.Schemas.MediaUploadResponse {
+        let url = baseURL.appendingPathComponent("/api/media/upload")
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 300.0 // 大きなファイル対応のため延長
+
+        // マルチパートデータを作成
+        let boundary = "Boundary-\(UUID().uuidString)"
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+
+        let multipartData = createMultipartData(
+            mediaData: mediaData,
+            boundary: boundary
+        )
+
+        // プログレス対応のアップロード
+        let (data, response) = try await uploadWithProgress(request: request, data: multipartData, progressHandler: progressHandler)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw HTTPClientError.invalidResponse
+        }
+
+        if httpResponse.statusCode == 200 {
+            do {
+                let uploadResponse = try decoder.decode(Components.Schemas.MediaUploadResponse.self, from: data)
+                return uploadResponse
+            } catch {
+                throw HTTPClientError.decodingError(error)
+            }
+        } else {
+            do {
+                let errorResponse = try decoder.decode(Components.Schemas.ErrorResponse.self, from: data)
+                throw HTTPClientError.serverError(errorResponse)
+            } catch {
+                throw HTTPClientError.httpError(statusCode: httpResponse.statusCode)
+            }
+        }
+    }
+
+    /// マルチパートデータを作成
+    private func createMultipartData(mediaData: MediaUploadData, boundary: String) -> Data {
+        var data = Data()
+        let lineBreak = "\r\n"
+        
+        print("🔧 Creating multipart data with boundary: \(boundary)")
+        print("🔧 Fields to include: file, filename, fileSize, mimeType, mediaType, timestamp")
+
+        // ファイルデータ
+        let filePart = "--\(boundary)\(lineBreak)Content-Disposition: form-data; name=\"file\"; filename=\"\(mediaData.filename)\"\(lineBreak)Content-Type: \(mediaData.mimeType)\(lineBreak)\(lineBreak)"
+        data.append(filePart.data(using: .utf8)!)
+        data.append(mediaData.data)
+        data.append(lineBreak.data(using: .utf8)!)
+        print("🔧 Added file field with \(mediaData.data.count) bytes")
+
+        // ファイル名
+        let filenamePart = "--\(boundary)\(lineBreak)Content-Disposition: form-data; name=\"filename\"\(lineBreak)\(lineBreak)\(mediaData.filename)\(lineBreak)"
+        data.append(filenamePart.data(using: .utf8)!)
+        print("🔧 Added filename field: \(mediaData.filename)")
+
+        // ファイルサイズ
+        let filesizePart = "--\(boundary)\(lineBreak)Content-Disposition: form-data; name=\"fileSize\"\(lineBreak)\(lineBreak)\(mediaData.fileSize)\(lineBreak)"
+        data.append(filesizePart.data(using: .utf8)!)
+        print("🔧 Added fileSize field: \(mediaData.fileSize)")
+
+        // MIMEタイプ
+        let mimetypePart = "--\(boundary)\(lineBreak)Content-Disposition: form-data; name=\"mimeType\"\(lineBreak)\(lineBreak)\(mediaData.mimeType)\(lineBreak)"
+        data.append(mimetypePart.data(using: .utf8)!)
+        print("🔧 Added mimeType field: \(mediaData.mimeType)")
+
+        // メディアタイプ
+        let mediatypePart = "--\(boundary)\(lineBreak)Content-Disposition: form-data; name=\"mediaType\"\(lineBreak)\(lineBreak)\(mediaData.mediaType.rawValue)\(lineBreak)"
+        data.append(mediatypePart.data(using: .utf8)!)
+        print("🔧 Added mediaType field: \(mediaData.mediaType.rawValue)")
+
+        // タイムスタンプ
+        let iso8601Formatter = ISO8601DateFormatter()
+        let timestampString = iso8601Formatter.string(from: mediaData.timestamp)
+        let timestampPart = "--\(boundary)\(lineBreak)Content-Disposition: form-data; name=\"timestamp\"\(lineBreak)\(lineBreak)\(timestampString)\(lineBreak)"
+        data.append(timestampPart.data(using: .utf8)!)
+        print("🔧 Added timestamp field: \(timestampString)")
+
+        // 終了境界
+        let endBoundary = "--\(boundary)--\(lineBreak)"
+        data.append(endBoundary.data(using: .utf8)!)
+        print("🔧 Added end boundary")
+        
+        print("🔧 Total multipart data size: \(data.count) bytes")
+        return data
+    }
+
+    /// プログレス対応のアップロード
+    private func uploadWithProgress(
+        request: URLRequest,
+        data: Data,
+        progressHandler: @escaping (Double) -> Void
+    ) async throws -> (Data, URLResponse) {
+        try await withCheckedThrowingContinuation { continuation in
+            let task = session.uploadTask(with: request, from: data) { responseData, response, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else if let responseData, let response {
+                    continuation.resume(returning: (responseData, response))
+                } else {
+                    continuation.resume(throwing: HTTPClientError.invalidResponse)
+                }
+            }
+
+            // プログレス監視
+            let observation = task.progress.observe(\.fractionCompleted) { progress, _ in
+                Task { @MainActor in
+                    progressHandler(progress.fractionCompleted)
+                }
+            }
+
+            task.resume()
+
+            // タスク完了時に監視を停止
+            Task {
+                try await Task.sleep(nanoseconds: 100_000_000) // 0.1秒待機
+                while task.state == .running {
+                    try await Task.sleep(nanoseconds: 100_000_000)
+                }
+                observation.invalidate()
             }
         }
     }
